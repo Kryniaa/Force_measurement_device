@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
+project(STM32_Firmware C ASM)
 # STM32CubeMX generated symbols (macros)
 set(MX_Defines_Syms 
 	TX_INCLUDE_USER_DEFINE_FILE 
@@ -37,6 +38,8 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../USBX/App/ux_device_cdc_acm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/tx_initialize_low_level.S
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/i2c_mux.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/force_sensor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/app_threadx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/stm32h5xx_it.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/stm32h5xx_hal_msp.c
@@ -361,7 +364,9 @@ set(MX_LINK_DIRS
 set(MX_LINK_LIBS 
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
-    USBX	ThreadX	
+    USBX
+	ThreadX
+	
 )
 # Interface library for includes and symbols
 add_library(stm32cubemx INTERFACE)
