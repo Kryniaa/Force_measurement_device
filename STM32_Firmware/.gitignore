@@ -18,11 +18,8 @@ Makefile
 *.cmake
 !CMakeLists.txt
 
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
+
 
 .clangd
 .cache/
