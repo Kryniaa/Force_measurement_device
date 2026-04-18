@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,12 +43,18 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern UX_SLAVE_CLASS_CDC_ACM *cdc_acm_handle;
+extern uint16_t sensor_data[10];
 
+TX_THREAD main_app_thread;
+
+uint8_t main_thread_stack[1024];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-
+extern void Read_All_Force_Sensors(void);
+void main_thread_entry(ULONG thread_input);
 /* USER CODE END PFP */
 
 /**
@@ -63,6 +69,7 @@ UINT App_ThreadX_Init(VOID *memory_ptr)
 
   /* USER CODE END App_ThreadX_MEM_POOL */
   /* USER CODE BEGIN App_ThreadX_Init */
+  tx_thread_create(&main_app_thread)
   /* USER CODE END App_ThreadX_Init */
 
   return ret;
