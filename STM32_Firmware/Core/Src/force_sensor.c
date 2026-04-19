@@ -1,10 +1,7 @@
 #include "force_sensor.h"
 #include "i2c_mux.h"
 
-/* * Adres I2C czujnika siły. 
- * UWAGA: Biblioteka HAL STM32 wymaga przesunięcia 7-bitowego adresu o 1 bit w lewo (<< 1), 
- * ponieważ najmłodszy bit (LSB) jest w niej automatycznie używany do ustawiania flagi Read/Write.
- */
+//Adres I2C czujnika siły.
 #define SENSOR_ADDRESS (0x28 << 1)
 
 // Globalna tablica przechowująca 10 gotowych, przeliczonych odczytów siły
@@ -26,7 +23,6 @@ void Read_All_Force_Sensors(void) {
     // Główna pętla skanująca wszystkie 10 czujników (indeksy 0-9)
     for (int i = 0; i <= 9; i++) {
         
-        // --- KROK 1: Wybór odpowiedniego multipleksera i kanału ---
         // Czujniki 0-7 są fizycznie podłączone do pierwszego MUX, a 8-9 do drugiego.
         if (i < 8){
             current_mux_address = MUX1_ADDRESS;
@@ -39,25 +35,21 @@ void Read_All_Force_Sensors(void) {
         // Przełączenie sprzętowe aktywnego kanału na właściwym układzie
         Channel_Choice(current_mux_address, current_channel);
         
-        // --- KROK 2: Wybudzenie czujnika ---
         // Wysłanie "pustego" żądania bez czytania danych, co wybudza czujnik z trybu uśpienia.
         HAL_I2C_IsDeviceReady(&hi2c1, SENSOR_ADDRESS, 1, 10);
         
         // Oczekujemy 5 ms na wykonanie konwersji analogowo-cyfrowej przez układ czujnika
         HAL_Delay(5);
 
-        // --- KROK 3: Odczyt danych z magistrali ---
         // Pytamy czujnik o 2 bajty. Przetwarzamy dane tylko, jeśli operacja zwróci status HAL_OK (sukces).
         if(HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDRESS, raw_data, 2, 10) == HAL_OK){
             
-            // --- KROK 4: Weryfikacja bitów statusu ---
             // Wycięcie dwóch najstarszych bitów (S1, S0) z pierwszego bajtu za pomocą masek.
             uint8_t status = (raw_data[0] >> 6) & 0x03;
             
             // Wartość 0x00 oznacza "Normal Operation" (pomiar jest ważny i bezbłędny)
             if (status == 0x00){
                 
-                // --- KROK 5: Złożenie 14-bitowego wyniku pomiaru ---
                 // 1. Zabezpieczamy niższe 6 bitów pierwszego bajtu (maska 0x3F).
                 // 2. Przesuwamy je o 8 pozycji w lewo (robiąc miejsce dla drugiego bajtu).
                 // 3. Łączymy (Suma logiczna OR) z drugim bajtem, uzyskując pełną 16-bitową zmienną.

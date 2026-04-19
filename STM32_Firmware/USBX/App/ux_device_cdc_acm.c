@@ -82,7 +82,7 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
   /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
   UX_PARAMETER_NOT_USED(cdc_acm_instance);
 
-  cdc_acm_handle = NULL
+  cdc_acm_handle = NULL;
   /* USER CODE END USBD_CDC_ACM_Deactivate */
 
   return;
