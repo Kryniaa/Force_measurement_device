@@ -1,16 +1,19 @@
 #include "scaling.h"
+#include "force_sensor.h"
+#include "i2c_mux.h"
 
 /**
  * @brief  Uśrednia serię pomiarów z czujników FX29 i przelicza wynik na siłę (Niutony).
  * Stosuje oversampling w celu redukcji szumów i zakłóceń mechanicznych.
- * @param  sensor_data Dwuwymiarowa tablica: [numer_czujnika][numer_probki]
+ * @param  all_sensors_data Dwuwymiarowa tablica: [numer_czujnika][numer_probki]
+ * @param  tares Jednowymiarowa tablica zawierająca odczyty czujników w momencie, gdy nie jest do nich przyłożona siła.
  * @param  output      Jednowymiarowa tablica wyjściowa z uśrednioną siłą (N) dla każdego czujnika.
  * @retval None
  */
-void Readings_scaling(uint16_t sensor_data[SAMPLES_PER_SENSOR][NUM_SENSORS], float output[NUM_SENSORS]) {
+void Readings_scaling(uint16_t all_sensors_data[SAMPLES_PER_SENSOR][NUM_SENSORS], float output[NUM_SENSORS], uint16_t tares[10]) {
     
     // Zabezpieczenie przed przekazaniem pustych wskaźników
-    if (sensor_data == NULL || output == NULL) return;
+    if (all_sensors_data == NULL || output == NULL) return;
 
     // Pętla iterująca po fizycznych czujnikach
     for (int i = 0; i < NUM_SENSORS; i++) {
@@ -21,9 +24,8 @@ void Readings_scaling(uint16_t sensor_data[SAMPLES_PER_SENSOR][NUM_SENSORS], flo
         // Pętla iterująca po 10 próbkach z jednego, konkretnego czujnika
         for (int j = 0; j < SAMPLES_PER_SENSOR; j++) {
             
-            uint16_t raw_val = sensor_data[j][i];
+            uint16_t raw_val = all_sensors_data[j][i];
            
-
             // Odrzucenie błędnego odczytu
             if (raw_val == 0xFFFF) continue;
             
@@ -43,15 +45,17 @@ void Readings_scaling(uint16_t sensor_data[SAMPLES_PER_SENSOR][NUM_SENSORS], flo
         }
         // Wyliczamy średnią z surowych danych
         float avg_raw = (float)raw_sum / (float)valid_samples;
+
+        // Odejmowanie tary od wyniku
+        float raw_after_tare = avg_raw - (float)tares[i];
+
+        // Zabezpieczenie przed ujemną wartością tary
+        if (raw_after_tare < 0.0f) raw_after_tare = 0.0f;
         
         // Zmiana na Newtony (zgodnie z notą katalogową)
-        float avg_force_newtons = ((avg_raw - 1000.0f) * 50.0f / 14000.0f) * 4.44822f;
+        float avg_force_newtons = ((raw_after_tare - 1000.0f) * 50.0f / 14000.0f) * 4.44822f;
         
         // Zapisanie ostatecznego, uśrednionego wyniku czujnika do tablicy wyjściowej
         output[i] = avg_force_newtons;
     }
-}
-
-void Tare_sensors(void){
-    
 }

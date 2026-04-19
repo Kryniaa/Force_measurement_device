@@ -5,7 +5,7 @@
 #define SENSOR_ADDRESS (0x28 << 1)
 
 // Globalna tablica przechowująca 10 gotowych, przeliczonych odczytów siły
-uint16_t sensor_data[10];
+extern uint16_t sensor_data[10];
 
 // Zewnętrzny uchwyt do magistrali I2C (zdefiniowany domyślnie przez CubeMX w main.c)
 extern I2C_HandleTypeDef hi2c1;
