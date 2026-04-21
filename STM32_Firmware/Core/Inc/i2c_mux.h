@@ -2,6 +2,7 @@
 #define I2C_MUX_H
 
 #include <stdint.h>
+
 #include "stm32h5xx_hal.h"
 
 #define MUX1_ADDRESS  (0x70 << 1)

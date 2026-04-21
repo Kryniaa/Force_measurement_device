@@ -375,18 +375,18 @@ target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
 target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
 
 # Create STM32_Drivers static library
-add_library(STM32_Drivers OBJECT)
+add_library(STM32_Drivers STATIC)
 target_sources(STM32_Drivers PRIVATE ${STM32_Drivers_Src})
 target_link_libraries(STM32_Drivers PUBLIC stm32cubemx)
 
 
 # Create USBX static library
-add_library(USBX OBJECT)
+add_library(USBX STATIC)
 target_sources(USBX PRIVATE ${USBX_Src})
 target_link_libraries(USBX PUBLIC stm32cubemx)
 
 # Create ThreadX static library
-add_library(ThreadX OBJECT)
+add_library(ThreadX STATIC)
 target_sources(ThreadX PRIVATE ${ThreadX_Src})
 target_link_libraries(ThreadX PUBLIC stm32cubemx)
 

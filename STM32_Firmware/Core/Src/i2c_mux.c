@@ -1,4 +1,5 @@
 #include "i2c_mux.h"
+#include "main.h"
 
 // Zewnętrzny uchwyt do magistrali I2C (zdefiniowany przez CubeMX w main.c)
 extern I2C_HandleTypeDef hi2c1;

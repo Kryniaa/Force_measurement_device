@@ -5,7 +5,7 @@
 #include "string.h"
 #include "stdio.h"
 
-extern UX_SLAVE_CLASS_CDC_ACM  *cdc_acm_instance;
+extern UX_SLAVE_CLASS_CDC_ACM  *cdc_acm_handle;
 
 /**
  * @brief Wysyła ramkę identyfikacyjną urządzenia przez port szeregowy USB (CDC ACM).
@@ -14,7 +14,7 @@ extern UX_SLAVE_CLASS_CDC_ACM  *cdc_acm_instance;
  */
 void USB_Send_Handshake(void) {
     // Sprawdzenie, czy instancja USB została poprawnie zainicjalizowana.
-    if (cdc_acm_instance != NULL) {
+    if (cdc_acm_handle != NULL) {
 
         // Unikalne ID
         uint8_t msg[] = "ID:FORCE_MEASUREMENT_DEVICE_V1\r\n";
@@ -23,7 +23,7 @@ void USB_Send_Handshake(void) {
         ULONG actual_length;
 
         // Wywołanie funkcji zapisu USBX.
-        _ux_device_class_cdc_acm_write(cdc_acm_instance, msg, strlen((char*)msg), &actual_length);
+        _ux_device_class_cdc_acm_write(cdc_acm_handle, msg, strlen((char*)msg), &actual_length);
     }
 }
 
@@ -37,7 +37,7 @@ void USB_Send_Handshake(void) {
 void USB_Send_SensorData(uint16_t *data, uint8_t count) {
     
     // Zabezpieczenie przed próbą wysłania, gdy kabel jest odpięty lub brak danych
-    if ((cdc_acm_instance == NULL) || (count == 0)) {
+    if ((cdc_acm_handle == NULL) || (count == 0)) {
         return;
     }
     
@@ -58,5 +58,5 @@ void USB_Send_SensorData(uint16_t *data, uint8_t count) {
     offset += snprintf(tx_buffer + offset, 128 - offset, "\r\n");
 
     //Fizyczne wysłanie gotowego bufora przez interfejs USBX
-    _ux_device_class_cdc_acm_write(cdc_acm_instance, (UCHAR*)tx_buffer, offset, &actual_length);
+    _ux_device_class_cdc_acm_write(cdc_acm_handle, (UCHAR*)tx_buffer, offset, &actual_length);
 }
