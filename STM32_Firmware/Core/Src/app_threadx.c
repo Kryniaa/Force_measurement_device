@@ -20,11 +20,15 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "app_threadx.h"
+#include "force_sensor.h"
+#include "tx_api.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <stdint.h>
+#include "communication.h"
+#include "tx_port.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,8 +48,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-extern UX_SLAVE_CLASS_CDC_ACM *cdc_acm_handle;
 extern uint16_t sensor_data[10];
+
+extern void Read_All_Force_Sensors(void);
 
 TX_THREAD main_app_thread;
 
@@ -70,7 +75,7 @@ UINT App_ThreadX_Init(VOID *memory_ptr)
 
   /* USER CODE END App_ThreadX_MEM_POOL */
   /* USER CODE BEGIN App_ThreadX_Init */
-  tx_thread_create(&main_app_thread);
+  tx_thread_create(&main_app_thread, "Sensor Loop", main_thread_entry, 0, main_thread_stack, sizeof(main_thread_stack), 5, 5, TX_NO_TIME_SLICE, TX_AUTO_START);
   /* USER CODE END App_ThreadX_Init */
 
   return ret;
@@ -95,5 +100,11 @@ void MX_ThreadX_Init(void)
 }
 
 /* USER CODE BEGIN 1 */
-
+void main_thread_entry(ULONG thread_input){
+  while(1){
+    Read_All_Force_Sensors();
+    USB_Send_SensorData(sensor_data, 10);
+    tx_thread_sleep(10);
+  }
+}
 /* USER CODE END 1 */
