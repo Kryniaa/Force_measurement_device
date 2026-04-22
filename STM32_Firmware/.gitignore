@@ -30,8 +30,6 @@ compile_commands.json
 MDK-ARM/
 EWARM/
 .settings/
-.project
-.cproject
 
 .DS_Store
 Thumbs.db
