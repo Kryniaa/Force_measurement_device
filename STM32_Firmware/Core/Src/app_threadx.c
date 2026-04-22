@@ -106,16 +106,16 @@ void MX_ThreadX_Init(void)
 /* USER CODE BEGIN 1 */
 /**
  * @brief Główna pętla sterująca komunikacją USB i odczytem czujników.
- * Funkcja działa jako dedykowany wątek systemu ThreadX. 
+ * Funkcja działa jako dedykowany wątek systemu ThreadX.
  * * @param thread_input Parametr wejściowy wątku (wymagany przez ThreadX, nieużywany).
  */
 void main_thread_entry(ULONG thread_input) {
-  
+
     /* Inicjalizacja lokalnych zmiennych pomocniczych:
      * - receive_buffer: tablica na dane przychodzące z komputera.
      * - actual_length: liczba bajtów faktycznie odebranych przez USB.
      * - status: przechowuje wynik operacji USBX.
-     * - is_authorized: flaga logiczna określająca, czy urządzenie 
+     * - is_authorized: flaga logiczna określająca, czy urządzenie
      * przeszło etap Handshake.
      */
     UCHAR receive_buffer[16];
@@ -124,21 +124,21 @@ void main_thread_entry(ULONG thread_input) {
     uint8_t is_authorized = 0;
 
     while(1) {
-        
+
         /* Sprawdzenie fizycznego i logicznego połączenia.
          * cdc_acm_handle != NULL: Czy port USB został zainicjalizowany?
          * ux_slave_class_cdc_acm_data_dtr_state == 1: Czy aplikacja na PC
          * otworzyła port COM? Jeśli tak, możemy rozmawiać.
          */
         if (cdc_acm_handle != NULL && cdc_acm_handle->ux_slave_class_cdc_acm_data_dtr_state == 1) {
-            
+
             /* Autoryzacja.
              * Jeśli urządzenie jest połączone, ale jeszcze nie zostało "przywitane".
              */
             if (!is_authorized) {
                 // Próba nieblokującego odczytu danych z portu USB
                 status = ux_device_class_cdc_acm_read(cdc_acm_handle, receive_buffer, 16, &actual_length);
-                
+
                 /* Jeśli odczyt się udał, odebrano dane, a pierwszym znakiem jest litera 'I':
                  * 1. Wyślij ramkę identyfikacyjną do PC (Handshake).
                  * 2. Ustaw flagę autoryzacji na 1, co odblokuje przesyłanie pomiarów.
@@ -147,7 +147,7 @@ void main_thread_entry(ULONG thread_input) {
                     USB_Send_Handshake();
                     is_authorized = 1;
                 }
-            } 
+            }
             /* Transmisja danych pomiarowych.
              * Jeśli urządzenie jest zautoryzowane, wykonuj pomiary i wysyłka do PC.
              */
@@ -156,9 +156,9 @@ void main_thread_entry(ULONG thread_input) {
                 USB_Send_SensorData(sensor_data, 10); // Wysyłka jako tekst
             }
 
-        } 
+        }
         /* Resetowanie stanu.
-         * Jeśli kabel zostanie odpięty lub aplikacja na PC zamknięta, 
+         * Jeśli kabel zostanie odpięty lub aplikacja na PC zamknięta,
          * wymuś ponowną autoryzację przy następnym połączeniu.
          */
         else {
@@ -166,7 +166,7 @@ void main_thread_entry(ULONG thread_input) {
         }
 
         /* Uśpienie wątku.
-         * Wstrzymuje wątek na 10 ticków systemowych. 
+         * Wstrzymuje wątek na 10 ticków systemowych.
          * Zapobiega to blokowaniu procesora i pozwala na pracę innym wątkom.
          */
         tx_thread_sleep(10);

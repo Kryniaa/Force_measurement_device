@@ -11,7 +11,7 @@
  * @retval None
  */
 void Readings_scaling(uint16_t all_sensors_data[SAMPLES_PER_SENSOR][NUM_SENSORS], float output[NUM_SENSORS], uint16_t tares[10]) {
-    
+
     // Zabezpieczenie przed przekazaniem pustych wskaźników
     if (all_sensors_data == NULL || output == NULL) return;
 
@@ -20,19 +20,19 @@ void Readings_scaling(uint16_t all_sensors_data[SAMPLES_PER_SENSOR][NUM_SENSORS]
 
         uint32_t raw_sum = 0;
         uint8_t valid_samples = 0; // Liczymy, ile próbek nie miało błędu
-        
+
         // Pętla iterująca po 10 próbkach z jednego, konkretnego czujnika
         for (int j = 0; j < SAMPLES_PER_SENSOR; j++) {
-            
+
             uint16_t raw_val = all_sensors_data[j][i];
-           
+
             // Odrzucenie błędnego odczytu
             if (raw_val == 0xFFFF) continue;
-            
-            // Zgodnie z notą katalogową "zero" to wartość 1000. 
-            if (raw_val < 1000) raw_val = 1000; 
-            
-            // Wartość 15000 to twardy limit czujnika (50 lbf). 
+
+            // Zgodnie z notą katalogową "zero" to wartość 1000.
+            if (raw_val < 1000) raw_val = 1000;
+
+            // Wartość 15000 to twardy limit czujnika (50 lbf).
             if (raw_val > 15000) raw_val = 15000;
 
             raw_sum += raw_val; // Dodajemy odszumione wartości całkowite do siebie
@@ -51,10 +51,10 @@ void Readings_scaling(uint16_t all_sensors_data[SAMPLES_PER_SENSOR][NUM_SENSORS]
 
         // Zabezpieczenie przed ujemną wartością tary
         if (raw_after_tare < 0.0f) raw_after_tare = 0.0f;
-        
+
         // Zmiana na Newtony (zgodnie z notą katalogową)
         float avg_force_newtons = ((raw_after_tare - 1000.0f) * 50.0f / 14000.0f) * 4.44822f;
-        
+
         // Zapisanie ostatecznego, uśrednionego wyniku czujnika do tablicy wyjściowej
         output[i] = avg_force_newtons;
     }

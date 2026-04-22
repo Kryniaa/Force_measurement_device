@@ -1,0 +1,2 @@
+../Core/Src/communication.c:15:6:USB_Send_Handshake	2
+../Core/Src/communication.c:37:6:USB_Send_SensorData	4
