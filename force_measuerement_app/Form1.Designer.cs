@@ -29,22 +29,23 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea2 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
-            System.Windows.Forms.DataVisualization.Charting.Series series2 = new System.Windows.Forms.DataVisualization.Charting.Series();
+            System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea1 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
+            System.Windows.Forms.DataVisualization.Charting.Series series1 = new System.Windows.Forms.DataVisualization.Charting.Series();
             cmbPorts = new ComboBox();
             btnConnect = new Button();
             btnTare = new Button();
             btnMeasure = new Button();
-            txtConsole = new RichTextBox();
             btnToggleConsole = new Button();
             groupBox1 = new GroupBox();
             flowLayoutPanel1 = new FlowLayoutPanel();
             groupBox2 = new GroupBox();
             flowLayoutPanel2 = new FlowLayoutPanel();
+            btnClearTare = new Button();
             groupBox3 = new GroupBox();
             chartWykres = new System.Windows.Forms.DataVisualization.Charting.Chart();
             timer1 = new System.Windows.Forms.Timer(components);
             btnDemo = new Button();
+            rtbConsole = new RichTextBox();
             groupBox1.SuspendLayout();
             flowLayoutPanel1.SuspendLayout();
             groupBox2.SuspendLayout();
@@ -61,6 +62,7 @@
             cmbPorts.Size = new Size(170, 28);
             cmbPorts.TabIndex = 0;
             cmbPorts.Text = "Choose COM";
+            cmbPorts.DropDown += cmbPorts_DropDown;
             cmbPorts.SelectedIndexChanged += cmbPorts_SelectedIndexChanged;
             // 
             // btnConnect
@@ -85,6 +87,7 @@
             btnTare.TabIndex = 2;
             btnTare.Text = "Tare";
             btnTare.UseVisualStyleBackColor = false;
+            btnTare.Click += btnTare_Click;
             // 
             // btnMeasure
             // 
@@ -98,28 +101,17 @@
             btnMeasure.Text = "Start Measure";
             btnMeasure.UseVisualStyleBackColor = false;
             // 
-            // txtConsole
-            // 
-            txtConsole.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            txtConsole.BackColor = SystemColors.MenuText;
-            txtConsole.ForeColor = Color.Cyan;
-            txtConsole.Location = new Point(12, 569);
-            txtConsole.Name = "txtConsole";
-            txtConsole.Size = new Size(1076, 96);
-            txtConsole.TabIndex = 4;
-            txtConsole.Text = "";
-            txtConsole.Visible = false;
-            // 
             // btnToggleConsole
             // 
             btnToggleConsole.BackColor = SystemColors.ControlLight;
             btnToggleConsole.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 238);
-            btnToggleConsole.Location = new Point(3, 93);
+            btnToggleConsole.Location = new Point(3, 138);
             btnToggleConsole.Name = "btnToggleConsole";
             btnToggleConsole.Size = new Size(173, 39);
             btnToggleConsole.TabIndex = 10;
-            btnToggleConsole.Text = "Show/Hide Console";
+            btnToggleConsole.Text = "Show Console";
             btnToggleConsole.UseVisualStyleBackColor = false;
+            btnToggleConsole.Click += btnToggleConsole_Click;
             // 
             // groupBox1
             // 
@@ -147,7 +139,7 @@
             groupBox2.Controls.Add(flowLayoutPanel2);
             groupBox2.Location = new Point(12, 224);
             groupBox2.Name = "groupBox2";
-            groupBox2.Size = new Size(188, 179);
+            groupBox2.Size = new Size(188, 214);
             groupBox2.TabIndex = 33;
             groupBox2.TabStop = false;
             groupBox2.Text = "Control Panel";
@@ -156,12 +148,25 @@
             // 
             flowLayoutPanel2.Controls.Add(btnMeasure);
             flowLayoutPanel2.Controls.Add(btnTare);
+            flowLayoutPanel2.Controls.Add(btnClearTare);
             flowLayoutPanel2.Controls.Add(btnToggleConsole);
             flowLayoutPanel2.FlowDirection = FlowDirection.TopDown;
             flowLayoutPanel2.Location = new Point(6, 26);
             flowLayoutPanel2.Name = "flowLayoutPanel2";
-            flowLayoutPanel2.Size = new Size(176, 142);
+            flowLayoutPanel2.Size = new Size(176, 182);
             flowLayoutPanel2.TabIndex = 11;
+            // 
+            // btnClearTare
+            // 
+            btnClearTare.BackColor = Color.FromArgb(255, 192, 128);
+            btnClearTare.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 238);
+            btnClearTare.Location = new Point(3, 93);
+            btnClearTare.Name = "btnClearTare";
+            btnClearTare.Size = new Size(173, 39);
+            btnClearTare.TabIndex = 11;
+            btnClearTare.Text = "Reset Tare";
+            btnClearTare.UseVisualStyleBackColor = false;
+            btnClearTare.Click += btnClearTare_Click;
             // 
             // groupBox3
             // 
@@ -176,14 +181,14 @@
             // 
             // chartWykres
             // 
-            chartArea2.Name = "ChartArea1";
-            chartWykres.ChartAreas.Add(chartArea2);
+            chartArea1.Name = "ChartArea1";
+            chartWykres.ChartAreas.Add(chartArea1);
             chartWykres.Dock = DockStyle.Fill;
             chartWykres.Location = new Point(3, 23);
             chartWykres.Name = "chartWykres";
-            series2.ChartArea = "ChartArea1";
-            series2.Name = "Series1";
-            chartWykres.Series.Add(series2);
+            series1.ChartArea = "ChartArea1";
+            series1.Name = "Series1";
+            chartWykres.Series.Add(series1);
             chartWykres.Size = new Size(848, 486);
             chartWykres.TabIndex = 0;
             chartWykres.Text = "chart1";
@@ -203,16 +208,30 @@
             btnDemo.UseVisualStyleBackColor = true;
             btnDemo.Click += button1_Click;
             // 
+            // rtbConsole
+            // 
+            rtbConsole.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            rtbConsole.BackColor = Color.Black;
+            rtbConsole.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point, 238);
+            rtbConsole.ForeColor = Color.Lime;
+            rtbConsole.Location = new Point(12, 542);
+            rtbConsole.Name = "rtbConsole";
+            rtbConsole.ReadOnly = true;
+            rtbConsole.Size = new Size(1078, 123);
+            rtbConsole.TabIndex = 36;
+            rtbConsole.Text = "";
+            rtbConsole.Visible = false;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1102, 677);
+            Controls.Add(rtbConsole);
             Controls.Add(btnDemo);
             Controls.Add(groupBox3);
             Controls.Add(groupBox2);
             Controls.Add(groupBox1);
-            Controls.Add(txtConsole);
             Name = "Form1";
             Text = "Form1";
             WindowState = FormWindowState.Maximized;
@@ -232,7 +251,6 @@
         private Button btnConnect;
         private Button btnTare;
         private Button btnMeasure;
-        private RichTextBox txtConsole;
         private Button btnToggleConsole;
         private GroupBox groupBox1;
         private GroupBox groupBox2;
@@ -242,5 +260,7 @@
         private System.Windows.Forms.DataVisualization.Charting.Chart chartWykres;
         private System.Windows.Forms.Timer timer1;
         private Button btnDemo;
+        private Button btnClearTare;
+        private RichTextBox rtbConsole;
     }
 }
