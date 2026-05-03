@@ -28,7 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            components = new System.ComponentModel.Container();
             System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea1 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
             System.Windows.Forms.DataVisualization.Charting.Series series1 = new System.Windows.Forms.DataVisualization.Charting.Series();
             cmbPorts = new ComboBox();
@@ -43,8 +42,6 @@
             btnClearTare = new Button();
             groupBox3 = new GroupBox();
             chartWykres = new System.Windows.Forms.DataVisualization.Charting.Chart();
-            timer1 = new System.Windows.Forms.Timer(components);
-            btnDemo = new Button();
             rtbConsole = new RichTextBox();
             groupBox1.SuspendLayout();
             flowLayoutPanel1.SuspendLayout();
@@ -100,6 +97,7 @@
             btnMeasure.TabIndex = 3;
             btnMeasure.Text = "Start Measure";
             btnMeasure.UseVisualStyleBackColor = false;
+            btnMeasure.Click += btnMeasure_Click;
             // 
             // btnToggleConsole
             // 
@@ -194,20 +192,6 @@
             chartWykres.Text = "chart1";
             chartWykres.Click += chartWykres_Click;
             // 
-            // timer1
-            // 
-            timer1.Tick += timer1_Tick;
-            // 
-            // btnDemo
-            // 
-            btnDemo.Location = new Point(71, 169);
-            btnDemo.Name = "btnDemo";
-            btnDemo.Size = new Size(94, 29);
-            btnDemo.TabIndex = 35;
-            btnDemo.Text = "Start Demo";
-            btnDemo.UseVisualStyleBackColor = true;
-            btnDemo.Click += button1_Click;
-            // 
             // rtbConsole
             // 
             rtbConsole.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -228,7 +212,6 @@
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1102, 677);
             Controls.Add(rtbConsole);
-            Controls.Add(btnDemo);
             Controls.Add(groupBox3);
             Controls.Add(groupBox2);
             Controls.Add(groupBox1);
@@ -258,8 +241,6 @@
         private FlowLayoutPanel flowLayoutPanel1;
         private FlowLayoutPanel flowLayoutPanel2;
         private System.Windows.Forms.DataVisualization.Charting.Chart chartWykres;
-        private System.Windows.Forms.Timer timer1;
-        private Button btnDemo;
         private Button btnClearTare;
         private RichTextBox rtbConsole;
     }
