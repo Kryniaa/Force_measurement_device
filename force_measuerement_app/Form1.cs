@@ -145,6 +145,13 @@ namespace force_measuerement_app
                                 
                                 // Obliczenie siły netto (odjęcie wartości tary dla danego kanału)
                                 double netForce = absoluteForce - _tareOffsets[i];
+                                
+                                // Obsługa błędu pomiaru
+                                if (netForce < 0)
+                                {
+                                    netForce = 0;
+                                };
+
                                 sum += netForce; // Dodanie do sumy w celu późniejszego wyliczenia średniej
 
                                 // Aktualizacja wykresu
