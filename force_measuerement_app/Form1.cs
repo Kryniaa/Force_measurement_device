@@ -131,7 +131,7 @@ namespace force_measuerement_app
                     if (values.Length == 10)
                     {
                         double sum = 0;
-                        double maxForceN = 250.0; // Maksymalny zakres czujnika w Niutonach
+                        double loadRange = 50.0; // Maksymalny zakres czujnika w Funtach
 
                         // Iterujemy przez wszystkie 10 kanałów pomiarowych
                         for (int i = 0; i < 10; i++)
@@ -140,11 +140,11 @@ namespace force_measuerement_app
                             if (int.TryParse(values[i], out int adcValue))
                             {
                                 // Obliczenie siły bezwzględnej z proporcji (0-4095 dla 12-bit ADC)
-                                double absoluteForce = (adcValue / 4095.0) * maxForceN;
-                                _currentAbsoluteForces[i] = absoluteForce; // Zapisanie do późniejszego tarowania
+                                double absoluteForceN = ((adcValue - 1000) * loadRange / 14000) * 4.44822;
+                                _currentAbsoluteForces[i] = absoluteForceN; // Zapisanie do późniejszego tarowania
                                 
                                 // Obliczenie siły netto (odjęcie wartości tary dla danego kanału)
-                                double netForce = absoluteForce - _tareOffsets[i];
+                                double netForce = absoluteForceN - _tareOffsets[i];
                                 
                                 // Obsługa błędu pomiaru
                                 if (netForce < 0)
