@@ -128,7 +128,7 @@ namespace force_measuerement_app
                     string[] values = dataPart.Split(',');
 
                     // Upewniamy się, że otrzymaliśmy dokładnie 10 kanałów
-                    if (values.Length == 10)
+                    if (values.Length >= 10)
                     {
                         double sum = 0;
                         double loadRange = 50.0; // Maksymalny zakres czujnika w Funtach
@@ -136,7 +136,7 @@ namespace force_measuerement_app
                         // Iterujemy przez wszystkie 10 kanałów pomiarowych
                         for (int i = 0; i < 10; i++)
                         {
-                            // Konwersja tekstu na liczbę całkowitą (wartość z 12-bitowego przetwornika ADC)
+                            // Konwersja tekstu na liczbę całkowitą (wartość z 14-bitowego przetwornika ADC)
                             if (int.TryParse(values[i], out int adcValue))
                             {
                                 // Obliczenie siły bezwzględnej z proporcji (0-4095 dla 12-bit ADC)
