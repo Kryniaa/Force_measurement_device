@@ -36,10 +36,11 @@ void Read_All_Force_Sensors(void) {
         Channel_Choice(current_mux_address, current_channel);
 
         // Wysłanie "pustego" żądania bez czytania danych, co wybudza czujnik z trybu uśpienia.
-        HAL_I2C_IsDeviceReady(&hi2c1, SENSOR_ADDRESS, 1, 10);
+        uint8_t dummy;
+        HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDRESS, &dummy, 1, 10);
 
-        // Oczekujemy 5 ms na wykonanie konwersji analogowo-cyfrowej przez układ czujnika
-        HAL_Delay(5);
+        // Oczekujemy 10 ms na wykonanie konwersji analogowo-cyfrowej przez układ czujnika
+        HAL_Delay(10);
 
         // Pytamy czujnik o 2 bajty. Przetwarzamy dane tylko, jeśli operacja zwróci status HAL_OK (sukces).
         if(HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDRESS, raw_data, 2, 10) == HAL_OK){
