@@ -1,0 +1,14 @@
+OldVersions/
+*/OldVersions/
+
+*.lck
+*.dwl
+*.dwl2
+
+*.bak
+*.tmp
+*.err
+*~
+*.swp
+
+*.log
