@@ -1,0 +1,74 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{D7CAAF5F-85F4-E7F5-8B70-D178CF2CD9BF}|force_measuerement_app\\force_measuerement_app.csproj|c:\\users\\janek\\onedrive\\pulpit\\janek\\force_measurement_device\\force_measuerement_app\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D7CAAF5F-85F4-E7F5-8B70-D178CF2CD9BF}|force_measuerement_app\\force_measuerement_app.csproj|solutionrelative:force_measuerement_app\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D7CAAF5F-85F4-E7F5-8B70-D178CF2CD9BF}|force_measuerement_app\\force_measuerement_app.csproj|C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\force_measuerement_app\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{D7CAAF5F-85F4-E7F5-8B70-D178CF2CD9BF}|force_measuerement_app\\force_measuerement_app.csproj|solutionrelative:force_measuerement_app\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D7CAAF5F-85F4-E7F5-8B70-D178CF2CD9BF}|force_measuerement_app\\force_measuerement_app.csproj|c:\\users\\janek\\onedrive\\pulpit\\janek\\force_measurement_device\\force_measuerement_app\\form1.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D7CAAF5F-85F4-E7F5-8B70-D178CF2CD9BF}|force_measuerement_app\\force_measuerement_app.csproj|solutionrelative:force_measuerement_app\\form1.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Form1.Designer.cs",
+              "DocumentMoniker": "C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\force_measuerement_app\\Form1.Designer.cs",
+              "RelativeDocumentMoniker": "force_measuerement_app\\Form1.Designer.cs",
+              "ToolTip": "C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\force_measuerement_app\\Form1.Designer.cs",
+              "RelativeToolTip": "force_measuerement_app\\Form1.Designer.cs",
+              "ViewState": "AgIAABYAAAAAAAAAAAApwBYAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-29T20:39:23.982Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Form1.cs",
+              "DocumentMoniker": "C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\force_measuerement_app\\Form1.cs",
+              "RelativeDocumentMoniker": "force_measuerement_app\\Form1.cs",
+              "ToolTip": "C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\force_measuerement_app\\Form1.cs",
+              "RelativeToolTip": "force_measuerement_app\\Form1.cs",
+              "ViewState": "AgIAAMUAAAAAAAAAAAAhwN0AAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-29T19:29:56.828Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Form1.cs [Projekt]",
+              "DocumentMoniker": "C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\force_measuerement_app\\Form1.cs",
+              "RelativeDocumentMoniker": "force_measuerement_app\\Form1.cs",
+              "ToolTip": "C:\\Users\\janek\\OneDrive\\Pulpit\\Janek\\Force_measurement_device\\force_measuerement_app\\Form1.cs [Projekt]",
+              "RelativeToolTip": "force_measuerement_app\\Form1.cs [Projekt]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-25T18:46:39.006Z",
+              "EditorCaption": " [Projekt]"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
