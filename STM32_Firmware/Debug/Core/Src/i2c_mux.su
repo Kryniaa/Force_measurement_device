@@ -1,1 +1,1 @@
-../Core/Src/i2c_mux.c:15:6:Channel_Choice	32	static
+../Core/Src/i2c_mux.c:15:19:Channel_Choice	32	static

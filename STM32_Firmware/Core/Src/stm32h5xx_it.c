@@ -87,7 +87,8 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+  // JEŚLI PROCESOR ZALICZY KRYTYCZNY BŁĄD - DIODA ZAŚWIECI SIĘ NA STAŁE
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {

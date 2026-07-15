@@ -113,7 +113,9 @@
 #define UX_USER_H
 
 /* USER CODE BEGIN 1 */
-
+#define UX_MAX_SLAVE_INTERFACES       4
+#define UX_MAX_DEVICE_INTERFACES      4
+#define UX_MAX_DEVICE_ENDPOINTS       6
 /* USER CODE END 1 */
 
 /* Define various build options for the USBX port.  The application should either make changes

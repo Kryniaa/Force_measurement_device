@@ -1,7 +1,7 @@
 Core/Src/app_threadx.o: ../Core/Src/app_threadx.c \
  ../Core/Inc/app_threadx.h ../Middlewares/ST/threadx/common/inc/tx_api.h \
  ../Middlewares/ST/threadx/ports/cortex_m33/gnu/inc/tx_port.h \
- ../Core/Inc/tx_user.h ../Core/Inc/force_sensor.h \
+ ../Core/Inc/tx_user.h ../Core/Inc/communication.h ../Core/Inc/main.h \
  ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal.h \
  ../Core/Inc/stm32h5xx_hal_conf.h \
  ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_rcc.h \
@@ -34,17 +34,19 @@ Core/Src/app_threadx.o: ../Core/Src/app_threadx.c \
  ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_ll_usb.h \
  ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd_ex.h \
  ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_exti.h \
- ../Core/Inc/communication.h \
  ../Middlewares/ST/usbx/common/core/inc/ux_api.h \
  ../Middlewares/ST/usbx/ports/generic/inc/ux_port.h ../USBX/App/ux_user.h \
  ../Middlewares/ST/usbx/common/core/inc/ux_utility.h \
  ../Middlewares/ST/usbx/common/core/inc/ux_system.h \
- ../Middlewares/ST/usbx/common/usbx_device_classes/inc/ux_device_class_cdc_acm.h
+ ../Middlewares/ST/usbx/common/usbx_device_classes/inc/ux_device_class_cdc_acm.h \
+ ../Middlewares/ST/usbx/common/usbx_stm32_device_controllers/ux_dcd_stm32.h \
+ ../USBX/Target/ux_stm32_config.h ../USBX/App/ux_device_descriptors.h
 ../Core/Inc/app_threadx.h:
 ../Middlewares/ST/threadx/common/inc/tx_api.h:
 ../Middlewares/ST/threadx/ports/cortex_m33/gnu/inc/tx_port.h:
 ../Core/Inc/tx_user.h:
-../Core/Inc/force_sensor.h:
+../Core/Inc/communication.h:
+../Core/Inc/main.h:
 ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal.h:
 ../Core/Inc/stm32h5xx_hal_conf.h:
 ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_rcc.h:
@@ -77,10 +79,12 @@ Core/Src/app_threadx.o: ../Core/Src/app_threadx.c \
 ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_ll_usb.h:
 ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd_ex.h:
 ../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_exti.h:
-../Core/Inc/communication.h:
 ../Middlewares/ST/usbx/common/core/inc/ux_api.h:
 ../Middlewares/ST/usbx/ports/generic/inc/ux_port.h:
 ../USBX/App/ux_user.h:
 ../Middlewares/ST/usbx/common/core/inc/ux_utility.h:
 ../Middlewares/ST/usbx/common/core/inc/ux_system.h:
 ../Middlewares/ST/usbx/common/usbx_device_classes/inc/ux_device_class_cdc_acm.h:
+../Middlewares/ST/usbx/common/usbx_stm32_device_controllers/ux_dcd_stm32.h:
+../USBX/Target/ux_stm32_config.h:
+../USBX/App/ux_device_descriptors.h:
