@@ -38,13 +38,17 @@ namespace force_measuerement_app
         public Form1()
         {
             InitializeComponent();
+
+            // Zapewnia bezpieczne zamknięcie portu, gdy użytkownik zamyka okno programu
+            // podczas aktywnego połączenia.
+            this.FormClosing += Form1_FormClosing;
         }
 
         /// <summary>
         /// Zdarzenie wywoływane jednorazowo podczas uruchamiania okna aplikacji.
         /// Odpowiada za pełną konfigurację wizualną wykresu (tytuły, osie, siatki i formatowanie serii).
         /// </summary>
-        private void Form1_Load(object sender, EventArgs e)
+        private void Form1_Load(object? sender, EventArgs e)
         {
             // Czyszczenie domyślnych ustawień kontrolki Chart
             chartWykres.Series.Clear();
@@ -202,7 +206,7 @@ namespace force_measuerement_app
             }
             catch (Exception ex)
             {
-                LogMessage($"Data error: {ex.Message}");
+                HandleDisconnection(ex.Message);
             }
         }
 
@@ -231,12 +235,82 @@ namespace force_measuerement_app
         }
 
         /// <summary>
+        /// Centralny punkt sprzątania po utracie połączenia z urządzeniem — niezależnie od tego, 
+        /// czy zerwanie było zamierzone (użytkownik kliknął "Disconnect"), czy nagłe (fizyczne 
+        /// wypięcie kabla wykryte podczas próby odczytu danych). Bezpiecznie zamyka port, 
+        /// resetuje wygląd przycisków i przerywa trwający pomiar, jeśli był aktywny.
+        /// </summary>
+        /// <param name="reason">Krótki opis przyczyny rozłączenia (np. treść wyjątku), trafiający do logu.</param>
+        private void HandleDisconnection(string reason)
+        {
+            // Guard: wątek tła nie może bezpośrednio modyfikować kontrolek WinForms.
+            // Jeśli jesteśmy poza wątkiem UI, przekazujemy wykonanie na właściwy wątek
+            // i kończymy działanie bieżącej instancji metody.
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => HandleDisconnection(reason)));
+                return;
+            }
+
+            // Guard: unikamy powtórnego wykonania procedury sprzątającej, jeśli UI
+            // sygnalizuje już stan "rozłączony" (np. przy kilku błędach odczytu z rzędu).
+            if (!myPort.IsOpen && btnConnect.Text == "Connect")
+                return;
+
+            // Odpięcie handlera zdarzeń - zapobiega dalszym próbom przetwarzania danych
+            // po tym, jak połączenie zostało uznane za nieaktywne.
+            myPort.DataReceived -= MyPort_DataReceived;
+
+            SafeClosePort();
+
+            // Reset stanu wizualnego przycisku połączenia do wartości domyślnych.
+            btnConnect.Text = "Connect";
+            btnConnect.BackColor = Color.LightGreen;
+
+            // Jeżeli pomiar był aktywny w chwili rozłączenia, przerywamy go i synchronizujemy
+            // stan wizualny przycisku pomiaru z rzeczywistym stanem logicznym aplikacji.
+            if (isMeasuring)
+            {
+                btnMeasure.PerformClick();
+            }
+
+            LogMessage($"Disconnected: {reason}");
+        }
+
+        /// <summary>
+        /// Bezpiecznie zamyka port szeregowy, ignorując wyjątki które mogą wystąpić, gdy 
+        /// urządzenie zniknęło fizycznie w trakcie próby zamknięcia (Close() na martwym 
+        /// porcie potrafi rzucić wyjątek mimo że logicznie port i tak przestaje być użyteczny).
+        /// </summary>
+        private void SafeClosePort()
+        {
+            try
+            {
+                if (myPort.IsOpen) myPort.Close();
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Ignored error while closing port: {ex.Message}");
+            }
+        }
+
+
+        /// <summary>
         /// Uniwersalna funkcja do wyświetlania wiadomości systemowych w oknie logów.
         /// Automatycznie dodaje godzinę i przewija widok na sam dół.
         /// </summary>
         /// <param name="message">Treść komunikatu</param>
         private void LogMessage(string message)
         {
+            if (this.IsDisposed || !this.IsHandleCreated)
+                return;
+
+            if (rtbConsole.InvokeRequired)
+            {
+                rtbConsole.Invoke(new Action(() => LogMessage(message)));
+                return;
+            }
+
             rtbConsole.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\r\n");
             rtbConsole.ScrollToCaret(); // Wymuszenie zjechania suwakiem do najnowszego loga
         }
@@ -248,23 +322,11 @@ namespace force_measuerement_app
         private void btnConnect_Click(object sender, EventArgs e)
         {
             // --- SEKCJA ROZŁĄCZANIA ---
-            // Jeśli port jest już otwarty, wykonujemy procedurę bezpiecznego zamknięcia
+            // Ręczne rozłączenie deleguje do tego samego miejsca, które obsługuje nagłą utratę
+            // połączenia - dzięki temu nie ma dwóch niezależnych kopii logiki resetowania UI.
             if (myPort.IsOpen)
             {
-                // Odpinamy nasłuchiwacz zdarzeń, żeby zapobiec błędom w tle po zamknięciu portu
-                myPort.DataReceived -= MyPort_DataReceived;
-                myPort.Close();
-
-                btnConnect.Text = "Connect";
-                btnConnect.BackColor = Color.LightGreen;
-                LogMessage("Disconnected from STM32.");
-
-                // Automatyzacja: Jeśli rozłączamy kabel, a pomiar wciąż trwa, automat "klika" Stop za nas!
-                if (isMeasuring)
-                {
-                    btnMeasure.PerformClick();
-                }
-
+                HandleDisconnection("User request.");
                 return; // Uciekamy z funkcji, żeby nie wykonać kodu łączenia znajdującego się poniżej
             }
 
@@ -323,13 +385,13 @@ namespace force_measuerement_app
             {
                 // Urządzenie nie odpowiedziało w ciągu 2 sekund (ReadTimeout)
                 LogMessage("Handshake timeout. STM32 did not respond.");
-                myPort.Close();
+                SafeClosePort();
             }
             catch (Exception ex)
             {
                 // Łapanie innych błędów (np. port jest aktualnie używany przez inny program)
                 LogMessage($"Error: {ex.Message}");
-                if (myPort.IsOpen) myPort.Close();
+                SafeClosePort();
             }
         }
 
@@ -441,6 +503,18 @@ namespace force_measuerement_app
             {
                 btnToggleConsole.Text = "Show Console";
             }
+        }
+
+        // <summary>
+        /// Zapewnia bezpieczne zamknięcie portu szeregowego i odpięcie nasłuchiwaczy 
+        /// przed zniszczeniem formularza. Zapobiega próbom dostępu do już zniszczonych 
+        /// kontrolek z wątku tła SerialPort, jeśli dane przyjdą dokładnie w momencie 
+        /// zamykania okna programu.
+        /// </summary>
+        private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            myPort.DataReceived -= MyPort_DataReceived;
+            SafeClosePort();
         }
 
         // =====================================================================

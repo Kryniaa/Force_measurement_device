@@ -54,9 +54,10 @@
             // cmbPorts
             // 
             cmbPorts.FormattingEnabled = true;
-            cmbPorts.Location = new Point(3, 3);
+            cmbPorts.Location = new Point(3, 2);
+            cmbPorts.Margin = new Padding(3, 2, 3, 2);
             cmbPorts.Name = "cmbPorts";
-            cmbPorts.Size = new Size(170, 28);
+            cmbPorts.Size = new Size(147, 23);
             cmbPorts.TabIndex = 0;
             cmbPorts.Text = "Choose COM";
             cmbPorts.DropDown += cmbPorts_DropDown;
@@ -66,9 +67,10 @@
             // 
             btnConnect.BackColor = Color.FromArgb(192, 255, 192);
             btnConnect.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 238);
-            btnConnect.Location = new Point(3, 37);
+            btnConnect.Location = new Point(3, 29);
+            btnConnect.Margin = new Padding(3, 2, 3, 2);
             btnConnect.Name = "btnConnect";
-            btnConnect.Size = new Size(170, 43);
+            btnConnect.Size = new Size(149, 32);
             btnConnect.TabIndex = 1;
             btnConnect.Text = "Connect";
             btnConnect.UseVisualStyleBackColor = false;
@@ -78,9 +80,10 @@
             // 
             btnTare.BackColor = SystemColors.Info;
             btnTare.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 238);
-            btnTare.Location = new Point(3, 48);
+            btnTare.Location = new Point(3, 35);
+            btnTare.Margin = new Padding(3, 2, 3, 2);
             btnTare.Name = "btnTare";
-            btnTare.Size = new Size(173, 39);
+            btnTare.Size = new Size(151, 29);
             btnTare.TabIndex = 2;
             btnTare.Text = "Tare";
             btnTare.UseVisualStyleBackColor = false;
@@ -91,9 +94,10 @@
             btnMeasure.BackColor = SystemColors.ActiveCaption;
             btnMeasure.BackgroundImageLayout = ImageLayout.None;
             btnMeasure.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 238);
-            btnMeasure.Location = new Point(3, 3);
+            btnMeasure.Location = new Point(3, 2);
+            btnMeasure.Margin = new Padding(3, 2, 3, 2);
             btnMeasure.Name = "btnMeasure";
-            btnMeasure.Size = new Size(173, 39);
+            btnMeasure.Size = new Size(151, 29);
             btnMeasure.TabIndex = 3;
             btnMeasure.Text = "Start Measure";
             btnMeasure.UseVisualStyleBackColor = false;
@@ -103,9 +107,10 @@
             // 
             btnToggleConsole.BackColor = SystemColors.ControlLight;
             btnToggleConsole.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 238);
-            btnToggleConsole.Location = new Point(3, 138);
+            btnToggleConsole.Location = new Point(3, 101);
+            btnToggleConsole.Margin = new Padding(3, 2, 3, 2);
             btnToggleConsole.Name = "btnToggleConsole";
-            btnToggleConsole.Size = new Size(173, 39);
+            btnToggleConsole.Size = new Size(151, 29);
             btnToggleConsole.TabIndex = 10;
             btnToggleConsole.Text = "Show Console";
             btnToggleConsole.UseVisualStyleBackColor = false;
@@ -114,9 +119,11 @@
             // groupBox1
             // 
             groupBox1.Controls.Add(flowLayoutPanel1);
-            groupBox1.Location = new Point(12, 12);
+            groupBox1.Location = new Point(10, 9);
+            groupBox1.Margin = new Padding(3, 2, 3, 2);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(188, 129);
+            groupBox1.Padding = new Padding(3, 2, 3, 2);
+            groupBox1.Size = new Size(164, 97);
             groupBox1.TabIndex = 32;
             groupBox1.TabStop = false;
             groupBox1.Text = "USB Connection";
@@ -127,17 +134,20 @@
             flowLayoutPanel1.Controls.Add(cmbPorts);
             flowLayoutPanel1.Controls.Add(btnConnect);
             flowLayoutPanel1.FlowDirection = FlowDirection.TopDown;
-            flowLayoutPanel1.Location = new Point(9, 26);
+            flowLayoutPanel1.Location = new Point(8, 20);
+            flowLayoutPanel1.Margin = new Padding(3, 2, 3, 2);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(173, 94);
+            flowLayoutPanel1.Size = new Size(151, 70);
             flowLayoutPanel1.TabIndex = 2;
             // 
             // groupBox2
             // 
             groupBox2.Controls.Add(flowLayoutPanel2);
-            groupBox2.Location = new Point(12, 224);
+            groupBox2.Location = new Point(10, 168);
+            groupBox2.Margin = new Padding(3, 2, 3, 2);
             groupBox2.Name = "groupBox2";
-            groupBox2.Size = new Size(188, 214);
+            groupBox2.Padding = new Padding(3, 2, 3, 2);
+            groupBox2.Size = new Size(164, 160);
             groupBox2.TabIndex = 33;
             groupBox2.TabStop = false;
             groupBox2.Text = "Control Panel";
@@ -149,18 +159,20 @@
             flowLayoutPanel2.Controls.Add(btnClearTare);
             flowLayoutPanel2.Controls.Add(btnToggleConsole);
             flowLayoutPanel2.FlowDirection = FlowDirection.TopDown;
-            flowLayoutPanel2.Location = new Point(6, 26);
+            flowLayoutPanel2.Location = new Point(5, 20);
+            flowLayoutPanel2.Margin = new Padding(3, 2, 3, 2);
             flowLayoutPanel2.Name = "flowLayoutPanel2";
-            flowLayoutPanel2.Size = new Size(176, 182);
+            flowLayoutPanel2.Size = new Size(154, 136);
             flowLayoutPanel2.TabIndex = 11;
             // 
             // btnClearTare
             // 
             btnClearTare.BackColor = Color.FromArgb(255, 192, 128);
             btnClearTare.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 238);
-            btnClearTare.Location = new Point(3, 93);
+            btnClearTare.Location = new Point(3, 68);
+            btnClearTare.Margin = new Padding(3, 2, 3, 2);
             btnClearTare.Name = "btnClearTare";
-            btnClearTare.Size = new Size(173, 39);
+            btnClearTare.Size = new Size(151, 29);
             btnClearTare.TabIndex = 11;
             btnClearTare.Text = "Reset Tare";
             btnClearTare.UseVisualStyleBackColor = false;
@@ -170,9 +182,11 @@
             // 
             groupBox3.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             groupBox3.Controls.Add(chartWykres);
-            groupBox3.Location = new Point(234, 12);
+            groupBox3.Location = new Point(205, 9);
+            groupBox3.Margin = new Padding(3, 2, 3, 2);
             groupBox3.Name = "groupBox3";
-            groupBox3.Size = new Size(854, 512);
+            groupBox3.Padding = new Padding(3, 2, 3, 2);
+            groupBox3.Size = new Size(747, 384);
             groupBox3.TabIndex = 34;
             groupBox3.TabStop = false;
             groupBox3.Text = "Force Visualization";
@@ -182,12 +196,13 @@
             chartArea1.Name = "ChartArea1";
             chartWykres.ChartAreas.Add(chartArea1);
             chartWykres.Dock = DockStyle.Fill;
-            chartWykres.Location = new Point(3, 23);
+            chartWykres.Location = new Point(3, 18);
+            chartWykres.Margin = new Padding(3, 2, 3, 2);
             chartWykres.Name = "chartWykres";
             series1.ChartArea = "ChartArea1";
             series1.Name = "Series1";
             chartWykres.Series.Add(series1);
-            chartWykres.Size = new Size(848, 486);
+            chartWykres.Size = new Size(741, 364);
             chartWykres.TabIndex = 0;
             chartWykres.Text = "chart1";
             chartWykres.Click += chartWykres_Click;
@@ -198,23 +213,25 @@
             rtbConsole.BackColor = Color.Black;
             rtbConsole.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point, 238);
             rtbConsole.ForeColor = Color.Lime;
-            rtbConsole.Location = new Point(12, 542);
+            rtbConsole.Location = new Point(10, 406);
+            rtbConsole.Margin = new Padding(3, 2, 3, 2);
             rtbConsole.Name = "rtbConsole";
             rtbConsole.ReadOnly = true;
-            rtbConsole.Size = new Size(1078, 123);
+            rtbConsole.Size = new Size(944, 93);
             rtbConsole.TabIndex = 36;
             rtbConsole.Text = "";
             rtbConsole.Visible = false;
             // 
             // Form1
             // 
-            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1102, 677);
+            ClientSize = new Size(964, 508);
             Controls.Add(rtbConsole);
             Controls.Add(groupBox3);
             Controls.Add(groupBox2);
             Controls.Add(groupBox1);
+            Margin = new Padding(3, 2, 3, 2);
             Name = "Form1";
             Text = "Form1";
             WindowState = FormWindowState.Maximized;
