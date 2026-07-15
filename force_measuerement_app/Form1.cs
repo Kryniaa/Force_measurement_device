@@ -284,6 +284,8 @@ namespace force_measuerement_app
                 myPort.BaudRate = 115200; // Prędkość musi być identyczna jak w STM32
                 myPort.ReadTimeout = 2000; // Czas oczekiwania na odpowiedź (2 sekundy)
                 myPort.WriteTimeout = 1000;
+                myPort.DtrEnable = true;
+                myPort.RtsEnable = true;
 
                 myPort.Open();
 
