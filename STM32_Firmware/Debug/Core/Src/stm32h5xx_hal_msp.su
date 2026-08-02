@@ -2,4 +2,4 @@
 ../Core/Src/stm32h5xx_hal_msp.c:83:6:HAL_I2C_MspInit	184	static
 ../Core/Src/stm32h5xx_hal_msp.c:142:6:HAL_I2C_MspDeInit	16	static
 ../Core/Src/stm32h5xx_hal_msp.c:176:6:HAL_PCD_MspInit	160	static
-../Core/Src/stm32h5xx_hal_msp.c:206:6:HAL_PCD_MspDeInit	16	static
+../Core/Src/stm32h5xx_hal_msp.c:212:6:HAL_PCD_MspDeInit	16	static

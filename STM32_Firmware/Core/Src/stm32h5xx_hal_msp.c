@@ -181,6 +181,8 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
     /* USER CODE BEGIN USB_DRD_FS_MspInit 0 */
     /* USER CODE END USB_DRD_FS_MspInit 0 */
 
+  /** Initializes the peripherals clock
+  */
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USB;
     PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
@@ -188,13 +190,17 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
       Error_Handler();
     }
 
+    /* Peripheral clock enable */
     __HAL_RCC_USB_CLK_ENABLE();
+    /* USB_DRD_FS interrupt Init */
     HAL_NVIC_SetPriority(USB_DRD_FS_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(USB_DRD_FS_IRQn);
     /* USER CODE BEGIN USB_DRD_FS_MspInit 1 */
 
     /* USER CODE END USB_DRD_FS_MspInit 1 */
+
   }
+
 }
 
 /**

@@ -116,24 +116,16 @@ void main_thread_entry(ULONG thread_input) {
     UINT status;
     uint8_t is_authorized = 0;
 
-    /* Wyciągnięcie struktury portu z main.c */
     extern PCD_HandleTypeDef hpcd_USB_DRD_FS;
 
-    /* 1. Dioda - system żyje */
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x00, PCD_SNG_BUF, 0x40);
+    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x80, PCD_SNG_BUF, 0x80);
+    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPOUT_ADDR,    PCD_SNG_BUF, 0xC0);
+    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPIN_ADDR,     PCD_SNG_BUF, 0x100);
+    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPINCMD_ADDR,  PCD_SNG_BUF, 0x140);
 
-    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x00, PCD_SNG_BUF, 0x40);   // EP0 OUT
-    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x80, PCD_SNG_BUF, 0x80);   // EP0 IN
-    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPOUT_ADDR,    PCD_SNG_BUF, 0xC0);  // CDC Bulk OUT (0x03)
-    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPIN_ADDR,     PCD_SNG_BUF, 0x100); // CDC Bulk IN  (0x82)
-    HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPINCMD_ADDR,  PCD_SNG_BUF, 0x140); // CDC Interrupt IN (0x81)
-
-    /* 2. MÓZG: Rejestracja sterownika STM32 w systemie USBX */
     ux_dcd_stm32_initialize((ULONG)hpcd_USB_DRD_FS.Instance, (ULONG)&hpcd_USB_DRD_FS);
 
-    /* 3. SPRZĘT: Włącznik rezystora D+ i zgłoszenie się do komputera */
     HAL_PCD_Start(&hpcd_USB_DRD_FS);
 
     /* Pętla główna */
@@ -148,7 +140,7 @@ void main_thread_entry(ULONG thread_input) {
                     is_authorized = 1;
                 }
             } else {
-                Read_All_Force_Sensors();
+            	Read_All_Force_Sensors();
                 USB_Send_SensorData(sensor_data, 10);
             }
         } else {

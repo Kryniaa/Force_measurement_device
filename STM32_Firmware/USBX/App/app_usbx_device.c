@@ -76,7 +76,6 @@ UINT MX_USBX_Device_Init(VOID *memory_ptr)
   ULONG language_id_framework_length;
   UCHAR *string_framework;
   UCHAR *language_id_framework;
-  UINT ux_status;
 
   UCHAR *pointer;
   TX_BYTE_POOL *byte_pool = (TX_BYTE_POOL*)memory_ptr;
@@ -116,21 +115,20 @@ UINT MX_USBX_Device_Init(VOID *memory_ptr)
   language_id_framework = USBD_Get_Language_Id_Framework(&language_id_framework_length);
 
   /* Install the device portion of USBX */
-   ux_status = ux_device_stack_initialize(device_framework_high_speed,
-                                  device_framework_hs_length,
-                                  device_framework_full_speed,
-                                  device_framework_fs_length,
-                                  string_framework,
-                                  string_framework_length,
-                                  language_id_framework,
-                                  language_id_framework_length,
-                                  USBD_ChangeFunction);
-   if (ux_status != UX_SUCCESS)
-   {
-     /* USER CODE BEGIN USBX_DEVICE_INITIALIZE_ERROR */
-     return ux_status;
-     /* USER CODE END USBX_DEVICE_INITIALIZE_ERROR */
-   }
+  if (ux_device_stack_initialize(device_framework_high_speed,
+                                 device_framework_hs_length,
+                                 device_framework_full_speed,
+                                 device_framework_fs_length,
+                                 string_framework,
+                                 string_framework_length,
+                                 language_id_framework,
+                                 language_id_framework_length,
+                                 USBD_ChangeFunction) != UX_SUCCESS)
+  {
+    /* USER CODE BEGIN USBX_DEVICE_INITIALIZE_ERROR */
+	  return UX_ERROR;
+    /* USER CODE END USBX_DEVICE_INITIALIZE_ERROR */
+  }
 
   /* Initialize the cdc acm class parameters for the device */
   cdc_acm_parameter.ux_slave_class_cdc_acm_instance_activate   = USBD_CDC_ACM_Activate;

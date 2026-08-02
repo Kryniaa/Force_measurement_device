@@ -98,7 +98,6 @@ int main(void)
   MX_ICACHE_Init();
   MX_USB_PCD_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   MX_ThreadX_Init();
@@ -183,14 +182,46 @@ static void MX_I2C1_Init(void)
 {
 
   /* USER CODE BEGIN I2C1_Init 0 */
+  {
+      GPIO_InitTypeDef gpio_recovery = {0};
+      gpio_recovery.Mode = GPIO_MODE_OUTPUT_OD; // Open-Drain!
+      gpio_recovery.Pull = GPIO_NOPULL;
+      gpio_recovery.Speed = GPIO_SPEED_FREQ_LOW;
 
+      gpio_recovery.Pin = I2C_SCL_Pin;
+      HAL_GPIO_Init(I2C_SCL_GPIO_Port, &gpio_recovery);
+      gpio_recovery.Pin = I2C_SDA_Pin;
+      HAL_GPIO_Init(I2C_SDA_GPIO_Port, &gpio_recovery);
+
+      HAL_GPIO_WritePin(I2C_SDA_GPIO_Port, I2C_SDA_Pin, GPIO_PIN_SET);
+      for (int i = 0; i < 9; i++) {
+          HAL_GPIO_WritePin(I2C_SCL_GPIO_Port, I2C_SCL_Pin, GPIO_PIN_RESET);
+          HAL_Delay(1);
+          HAL_GPIO_WritePin(I2C_SCL_GPIO_Port, I2C_SCL_Pin, GPIO_PIN_SET);
+          HAL_Delay(1);
+      }
+
+      HAL_GPIO_WritePin(I2C_SCL_GPIO_Port, I2C_SCL_Pin, GPIO_PIN_RESET);
+      HAL_Delay(1);
+      HAL_GPIO_WritePin(I2C_SDA_GPIO_Port, I2C_SDA_Pin, GPIO_PIN_RESET);
+      HAL_Delay(1);
+
+      HAL_GPIO_WritePin(I2C_SCL_GPIO_Port, I2C_SCL_Pin, GPIO_PIN_SET);
+      HAL_Delay(1);
+      HAL_GPIO_WritePin(I2C_SDA_GPIO_Port, I2C_SDA_Pin, GPIO_PIN_SET);
+      HAL_Delay(1);
+  }
   /* USER CODE END I2C1_Init 0 */
 
   /* USER CODE BEGIN I2C1_Init 1 */
-
+  HAL_GPIO_DeInit(I2C_SCL_GPIO_Port, I2C_SCL_Pin);
+  HAL_GPIO_DeInit(I2C_SDA_GPIO_Port, I2C_SDA_Pin);
+  __HAL_RCC_I2C1_FORCE_RESET();
+    HAL_Delay(2);
+    __HAL_RCC_I2C1_RELEASE_RESET();
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x60808CD3;
+  hi2c1.Init.Timing = 0x50A0A6F8;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -205,7 +236,7 @@ static void MX_I2C1_Init(void)
 
   /** Configure Analogue filter
   */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_DISABLE) != HAL_OK)
   {
     Error_Handler();
   }
@@ -217,7 +248,6 @@ static void MX_I2C1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN I2C1_Init 2 */
-
   /* USER CODE END I2C1_Init 2 */
 
 }

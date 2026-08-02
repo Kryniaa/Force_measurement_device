@@ -7,5 +7,6 @@
 extern uint16_t sensor_data[10];
 
 void Read_All_Force_Sensors(void);
+void I2C_Scan_Bus(void);
 
 #endif /* FORCE_SENSOR_H */

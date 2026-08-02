@@ -29,24 +29,14 @@ void Read_All_Force_Sensors(void) {
             current_channel = i - 8;
         }
 
-        // ZMIANA 1: Zapisujemy wynik przełączania kanału do zmiennej mux_status
-        HAL_StatusTypeDef mux_status = Channel_Choice(current_mux_address, current_channel);
+        Channel_Choice(current_mux_address, current_channel);
 
         uint8_t dummy;
-        HAL_StatusTypeDef wake_status = HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDRESS, &dummy, 1, 10);
+        HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDRESS, &dummy, 1, 10);
 
         HAL_Delay(10);
 
-        HAL_StatusTypeDef read_status = HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDRESS, raw_data, 2, 10);
-
-        /* USER CODE — TYMCZASOWA DIAGNOSTYKA dla kanału 0 */
-        if (i == 0) {
-            // ZMIANA 2: Dodajemy mux_status pomnożony przez 1000
-            sensor_data[0] = (uint16_t)(mux_status * 1000 + wake_status * 100 + read_status);
-            continue; // pomiń normalne przetwarzanie dla kanału 0 na czas testu
-        }
-
-        if(read_status == HAL_OK){
+        if(HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDRESS, raw_data, 2, 10) == HAL_OK){
             uint8_t status = (raw_data[0] >> 6) & 0x03;
             if (status == 0x00){
                 uint16_t force_counts = ((raw_data[0] & 0x3F) << 8) | raw_data[1];
