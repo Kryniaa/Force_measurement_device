@@ -248,7 +248,7 @@ namespace force_measuerement_app
             // i kończymy działanie bieżącej instancji metody.
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action(() => HandleDisconnection(reason)));
+                this.BeginInvoke(new Action(() => HandleDisconnection(reason)));
                 return;
             }
 
