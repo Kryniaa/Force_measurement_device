@@ -12,8 +12,25 @@ namespace force_measuerement_app
     {
         /// <summary>
         /// Obiekt obsługujący fizyczne/wirtualne połączenie z portem COM (np. STM32).
+        /// Tworzony na nowo przy każdej próbie połączenia (patrz btnConnect_Click) - obiekt
+        /// SerialPort potrafi zostać w niespójnym stanie po awaryjnym/nieudanym Close(),
+        /// więc bezpieczniej jest zaczynać każde połączenie od świeżej instancji.
         /// </summary>
         private SerialPort myPort = new SerialPort();
+
+        /// <summary>
+        /// Kanoniczny, jedyny "prawdziwy" stan połączenia w aplikacji. WSZYSTKIE miejsca w kodzie,
+        /// które muszą wiedzieć czy jesteśmy połączeni, pytają o TO pole - nigdy bezpośrednio
+        /// o myPort.IsOpen ani o tekst przycisku btnConnect.
+        /// </summary>
+        private bool _isConnected = false;
+
+        /// <summary>
+        /// Nazwa portu, z którym jesteśmy aktualnie połączeni. Używana przez detektor
+        /// fizycznego odłączenia (CheckIfConnectedPortStillExists), żeby wiedzieć, którego
+        /// portu ma szukać na liście dostępnych portów w systemie.
+        /// </summary>
+        private string? _connectedPortName = null;
 
         /// <summary>
         /// Tablica przechowująca zbuforowane wartości tarowania dla każdego z 10 kanałów.
@@ -42,6 +59,46 @@ namespace force_measuerement_app
             // Zapewnia bezpieczne zamknięcie portu, gdy użytkownik zamyka okno programu
             // podczas aktywnego połączenia.
             this.FormClosing += Form1_FormClosing;
+        }
+
+        // =====================================================================
+        // WYKRYWANIE FIZYCZNEGO ODŁĄCZENIA KABLA USB
+        // =====================================================================
+        // Windows wysyła komunikat WM_DEVICECHANGE do KAŻDEGO okna top-level za każdym razem,
+        // gdy zmienia się drzewo urządzeń w systemie (podpięcie/odpięcie czegokolwiek przez USB) -
+        // bez potrzeby żadnej dodatkowej rejestracji. Dzięki temu appka wie o wypięciu kabla
+        // NATYCHMIAST, zamiast czekać aż SerialPort sam zgłosi błąd przy kolejnej próbie
+        // odczytu/zapisu (co, jak widać na screenach, bywa niewiarygodne - port potrafi
+        // "wisieć" jako pozornie otwarty, a program i tak zaczyna zgłaszać sprzeczne błędy).
+
+        private const int WM_DEVICECHANGE = 0x0219;
+        private const int DBT_DEVNODES_CHANGED = 0x0007;
+
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_DEVICECHANGE && m.WParam.ToInt32() == DBT_DEVNODES_CHANGED)
+            {
+                CheckIfConnectedPortStillExists();
+            }
+        }
+
+        /// <summary>
+        /// Wywoływane przy KAŻDEJ zmianie w drzewie urządzeń USB w systemie (nie tylko naszego
+        /// czujnika). Sprawdza, czy port, z którym jesteśmy połączeni, nadal figuruje na liście
+        /// portów dostępnych w systemie - jeśli zniknął, oznacza to fizyczne wypięcie kabla
+        /// i od razu sprzątamy przez HandleDisconnection, zamiast czekać na wyjątek.
+        /// </summary>
+        private void CheckIfConnectedPortStillExists()
+        {
+            if (!_isConnected || _connectedPortName == null)
+                return;
+
+            if (!SerialPort.GetPortNames().Contains(_connectedPortName))
+            {
+                HandleDisconnection("USB cable physically unplugged.");
+            }
         }
 
         /// <summary>
@@ -146,15 +203,16 @@ namespace force_measuerement_app
                                 // Obliczenie siły bezwzględnej z proporcji (0-4095 dla 12-bit ADC)
                                 double absoluteForceN = ((adcValue - 1000) * loadRange / 14000) * 4.44822;
                                 _currentAbsoluteForces[i] = absoluteForceN; // Zapisanie do późniejszego tarowania
-                                
+
                                 // Obliczenie siły netto (odjęcie wartości tary dla danego kanału)
                                 double netForce = absoluteForceN - _tareOffsets[i];
-                                
+
                                 // Obsługa błędu pomiaru
                                 if (netForce < 0)
                                 {
                                     netForce = 0;
-                                };
+                                }
+                                ;
 
                                 sum += netForce; // Dodanie do sumy w celu późniejszego wyliczenia średniej
 
@@ -173,7 +231,7 @@ namespace force_measuerement_app
                     }
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 // Przechwycenie błędu (np. uszkodzonego pakietu) i wrzucenie go do konsoli
                 LogMessage($"Data error: {ex.Message}");
@@ -237,8 +295,8 @@ namespace force_measuerement_app
         /// <summary>
         /// Centralny punkt sprzątania po utracie połączenia z urządzeniem — niezależnie od tego, 
         /// czy zerwanie było zamierzone (użytkownik kliknął "Disconnect"), czy nagłe (fizyczne 
-        /// wypięcie kabla wykryte podczas próby odczytu danych). Bezpiecznie zamyka port, 
-        /// resetuje wygląd przycisków i przerywa trwający pomiar, jeśli był aktywny.
+        /// wypięcie kabla wykryte przez WM_DEVICECHANGE albo przez błąd odczytu). Bezpiecznie
+        /// zamyka port, resetuje wygląd przycisków i przerywa trwający pomiar, jeśli był aktywny.
         /// </summary>
         /// <param name="reason">Krótki opis przyczyny rozłączenia (np. treść wyjątku), trafiający do logu.</param>
         private void HandleDisconnection(string reason)
@@ -252,10 +310,14 @@ namespace force_measuerement_app
                 return;
             }
 
-            // Guard: unikamy powtórnego wykonania procedury sprzątającej, jeśli UI
-            // sygnalizuje już stan "rozłączony" (np. przy kilku błędach odczytu z rzędu).
-            if (!myPort.IsOpen && btnConnect.Text == "Connect")
+            // Guard: unikamy powtórnego wykonania procedury sprzątającej, jeśli już wiemy,
+            // że jesteśmy rozłączeni (np. przy kilku błędach/zdarzeniach z rzędu). Sprawdzamy
+            // TYLKO _isConnected - to jedyne wiarygodne źródło prawdy w całej aplikacji.
+            if (!_isConnected)
                 return;
+
+            _isConnected = false;
+            _connectedPortName = null;
 
             // Odpięcie handlera zdarzeń - zapobiega dalszym próbom przetwarzania danych
             // po tym, jak połączenie zostało uznane za nieaktywne.
@@ -324,7 +386,7 @@ namespace force_measuerement_app
             // --- SEKCJA ROZŁĄCZANIA ---
             // Ręczne rozłączenie deleguje do tego samego miejsca, które obsługuje nagłą utratę
             // połączenia - dzięki temu nie ma dwóch niezależnych kopii logiki resetowania UI.
-            if (myPort.IsOpen)
+            if (_isConnected)
             {
                 HandleDisconnection("User request.");
                 return; // Uciekamy z funkcji, żeby nie wykonać kodu łączenia znajdującego się poniżej
@@ -341,7 +403,10 @@ namespace force_measuerement_app
                     return;
                 }
 
-                // Konfiguracja parametrów portu szeregowego
+                // Nowa instancja SerialPort przy każdej próbie połączenia - jeśli poprzednie
+                // połączenie zakończyło się awaryjnie (fizyczne wypięcie kabla w trakcie Close()),
+                // stary obiekt mógł zostać w niespójnym wewnętrznym stanie. Zaczynamy od zera.
+                myPort = new SerialPort();
                 myPort.PortName = cmbPorts.SelectedItem.ToString();
                 myPort.BaudRate = 115200; // Prędkość musi być identyczna jak w STM32
                 myPort.ReadTimeout = 2000; // Czas oczekiwania na odpowiedź (2 sekundy)
@@ -372,6 +437,9 @@ namespace force_measuerement_app
                     btnConnect.Text = "Disconnect";
                     btnConnect.BackColor = Color.Salmon;
 
+                    _isConnected = true;
+                    _connectedPortName = myPort.PortName;
+
                     // Podpięcie funkcji nasłuchującej nowe dane z kabla
                     myPort.DataReceived += MyPort_DataReceived;
                 }
@@ -391,7 +459,8 @@ namespace force_measuerement_app
             }
             catch (Exception ex)
             {
-                // Łapanie innych błędów (np. port jest aktualnie używany przez inny program)
+                // Łapanie innych błędów (np. port jest aktualnie używany przez inny program,
+                // albo port o tej nazwie już fizycznie nie istnieje w systemie)
                 LogMessage($"Error: {ex.Message}");
                 SafeClosePort();
             }
@@ -403,8 +472,11 @@ namespace force_measuerement_app
         /// </summary>
         private void btnMeasure_Click(object sender, EventArgs e)
         {
-            // Zabezpieczenie: Sprawdzamy, czy port jest otwarty TYLKO przy próbie startu pomiaru
-            if (!isMeasuring && (myPort == null || !myPort.IsOpen))
+            // Zabezpieczenie: Sprawdzamy stan połączenia TYLKO przy próbie startu pomiaru.
+            // Pytamy o _isConnected, a nie o myPort.IsOpen - to samo źródło prawdy, którego
+            // używa też btnConnect i HandleDisconnection, więc te trzy miejsca nie mogą
+            // już się ze sobą "kłócić" tak jak na screenach.
+            if (!isMeasuring && !_isConnected)
             {
                 MessageBox.Show("Najpierw połącz się z urządzeniem!", "Brak połączenia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
