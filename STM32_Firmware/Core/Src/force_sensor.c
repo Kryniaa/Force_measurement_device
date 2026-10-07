@@ -17,16 +17,23 @@ extern I2C_HandleTypeDef hi2c1;
  */
 void Read_All_Force_Sensors(void) {
     uint8_t current_mux_address;
+    uint8_t other_mux_address;
     uint8_t current_channel;
     uint8_t raw_data[2];
 
     for (int i = 0; i <= 9; i++) {
         if (i < 8){
             current_mux_address = MUX1_ADDRESS;
+            other_mux_address = MUX2_ADDRESS;
             current_channel = i;
         } else {
             current_mux_address = MUX2_ADDRESS;
+            other_mux_address = MUX1_ADDRESS;
             current_channel = i - 8;
+        }
+        if (i == 0 || i == 8){
+			uint8_t off = 0x00;
+			HAL_I2C_Master_Transmit(&hi2c1, other_mux_address, &off, 1, 100);
         }
 
         Channel_Choice(current_mux_address, current_channel);
