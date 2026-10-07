@@ -50,6 +50,12 @@ namespace force_measuerement_app
         private bool isMeasuring = false;
 
         /// <summary>
+        /// Ustawiana przy starcie pomiaru. Pierwsza odebrana paczka danych zostaje użyta
+        /// jako tara, po czym flaga jest kasowana.
+        /// </summary>
+        private bool _autoTarePending = false;
+
+        /// <summary>
         /// Konstruktor głównego okna aplikacji. Inicjalizuje wygenerowane komponenty WinForms.
         /// </summary>
         public Form1()
@@ -204,6 +210,12 @@ namespace force_measuerement_app
                                 double absoluteForceN = ((adcValue - 1000) * loadRange / 14000) * 4.44822;
                                 _currentAbsoluteForces[i] = absoluteForceN; // Zapisanie do późniejszego tarowania
 
+                                // Automatyczne tarowanie na pierwszej paczce po starcie pomiaru
+                                if (_autoTarePending)
+                                {
+                                    _tareOffsets[i] = absoluteForceN;
+                                }
+
                                 // Obliczenie siły netto (odjęcie wartości tary dla danego kanału)
                                 double netForce = absoluteForceN - _tareOffsets[i];
 
@@ -225,6 +237,11 @@ namespace force_measuerement_app
                             }
                         }
 
+                        if (_autoTarePending)
+                        {
+                            _autoTarePending = false;
+                            LogMessage("Auto-tare done on first data packet.");
+                        }
                         // Obliczenie i narysowanie średniej ze wszystkich czujników
                         double average = sum / 10.0;
                         UpdateAverageLine(average);
@@ -488,6 +505,7 @@ namespace force_measuerement_app
             // Aktualizacja wyglądu przycisku
             if (isMeasuring)
             {
+                _autoTarePending = true;
                 btnMeasure.Text = "Stop Measure";
                 btnMeasure.BackColor = Color.LightCoral; // Czerwony ostrzega, że pomiar właśnie trwa
             }
