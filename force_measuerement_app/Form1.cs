@@ -15,6 +15,8 @@ namespace force_measuerement_app
         /// Tworzony na nowo przy każdej próbie połączenia (patrz btnConnect_Click) - obiekt
         /// SerialPort potrafi zostać w niespójnym stanie po awaryjnym/nieudanym Close(),
         /// więc bezpieczniej jest zaczynać każde połączenie od świeżej instancji.
+        /// Stary obiekt jest ZAWSZE zwalniany przez Dispose() (patrz SafeClosePort), inaczej
+        /// sterownik trzyma uchwyt, a w liście portów pojawiają się duplikaty (np. kilka razy COM5).
         /// </summary>
         private SerialPort myPort = new SerialPort();
 
@@ -91,19 +93,46 @@ namespace force_measuerement_app
         }
 
         /// <summary>
+        /// Zwraca listę portów COM widocznych w systemie: bez duplikatów i posortowaną
+        /// naturalnie (COM3, COM5, COM10 zamiast COM10, COM3, COM5).
+        /// GetPortNames() czyta wpisy z rejestru, które po awaryjnym odłączeniu kabla
+        /// potrafią się dublować - stąd Distinct().
+        /// </summary>
+        private static string[] GetUniquePortNames()
+        {
+            return SerialPort.GetPortNames()
+                .Distinct()
+                .OrderBy(p => p.Length)
+                .ThenBy(p => p)
+                .ToArray();
+        }
+
+        /// <summary>
         /// Wywoływane przy KAŻDEJ zmianie w drzewie urządzeń USB w systemie (nie tylko naszego
-        /// czujnika). Sprawdza, czy port, z którym jesteśmy połączeni, nadal figuruje na liście
-        /// portów dostępnych w systemie - jeśli zniknął, oznacza to fizyczne wypięcie kabla
-        /// i od razu sprzątamy przez HandleDisconnection, zamiast czekać na wyjątek.
+        /// czujnika). Sprawdza, czy port, z którym jesteśmy połączeni, nadal żyje.
+        /// Sama lista z rejestru (GetPortNames) jest zawodna - stary wpis potrafi tam zostać
+        /// po wypięciu kabla - dlatego dodatkowo "dotykamy" portu (CtsHolding), co na
+        /// usuniętym urządzeniu rzuca wyjątek.
         /// </summary>
         private void CheckIfConnectedPortStillExists()
         {
             if (!_isConnected || _connectedPortName == null)
                 return;
 
-            if (!SerialPort.GetPortNames().Contains(_connectedPortName))
+            bool gone = false;
+            try
             {
-                HandleDisconnection("USB cable physically unplugged.");
+                // Odczyt właściwości pyta sterownik o stan linii - na usuniętym urządzeniu rzuca wyjątek.
+                _ = myPort.CtsHolding;
+            }
+            catch
+            {
+                gone = true;
+            }
+
+            if (gone || !GetUniquePortNames().Contains(_connectedPortName))
+            {
+                HandleDisconnection("USB cable physically unplugged.", deviceGone: true);
             }
         }
 
@@ -135,7 +164,6 @@ namespace force_measuerement_app
             obszar.AxisY.Interval = 50; // Skok głównej siatki co 50 N
 
             // Włączenie i konfiguracja siatki pomocniczej dla większej czytelności (co 25 N)
-            obszar.AxisY.MinorGrid.Enabled = true;
             obszar.AxisY.MinorGrid.Enabled = true;
             obszar.AxisY.MinorGrid.Interval = 25;
             obszar.AxisY.MinorGrid.LineColor = Color.LightGray;
@@ -224,7 +252,6 @@ namespace force_measuerement_app
                                 {
                                     netForce = 0;
                                 }
-                                ;
 
                                 sum += netForce; // Dodanie do sumy w celu późniejszego wyliczenia średniej
 
@@ -281,7 +308,9 @@ namespace force_measuerement_app
             }
             catch (Exception ex)
             {
-                HandleDisconnection(ex.Message);
+                // Wyjątek przy odczycie oznacza zwykle martwy port (np. wyrwany kabel),
+                // więc zamykamy go w tle, żeby Close() nie zawiesiło wątku UI.
+                HandleDisconnection(ex.Message, deviceGone: true);
             }
         }
 
@@ -313,17 +342,19 @@ namespace force_measuerement_app
         /// Centralny punkt sprzątania po utracie połączenia z urządzeniem — niezależnie od tego, 
         /// czy zerwanie było zamierzone (użytkownik kliknął "Disconnect"), czy nagłe (fizyczne 
         /// wypięcie kabla wykryte przez WM_DEVICECHANGE albo przez błąd odczytu). Bezpiecznie
-        /// zamyka port, resetuje wygląd przycisków i przerywa trwający pomiar, jeśli był aktywny.
+        /// zamyka i zwalnia port, resetuje wygląd przycisków i przerywa trwający pomiar, jeśli był aktywny.
         /// </summary>
         /// <param name="reason">Krótki opis przyczyny rozłączenia (np. treść wyjątku), trafiający do logu.</param>
-        private void HandleDisconnection(string reason)
+        /// <param name="deviceGone">True, jeśli urządzenie zniknęło fizycznie - wtedy port jest zamykany
+        /// w tle, bo Close() na usuniętym urządzeniu potrafi zawiesić wątek UI.</param>
+        private void HandleDisconnection(string reason, bool deviceGone = false)
         {
             // Guard: wątek tła nie może bezpośrednio modyfikować kontrolek WinForms.
             // Jeśli jesteśmy poza wątkiem UI, przekazujemy wykonanie na właściwy wątek
             // i kończymy działanie bieżącej instancji metody.
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action(() => HandleDisconnection(reason)));
+                this.BeginInvoke(new Action(() => HandleDisconnection(reason, deviceGone)));
                 return;
             }
 
@@ -336,11 +367,8 @@ namespace force_measuerement_app
             _isConnected = false;
             _connectedPortName = null;
 
-            // Odpięcie handlera zdarzeń - zapobiega dalszym próbom przetwarzania danych
-            // po tym, jak połączenie zostało uznane za nieaktywne.
-            myPort.DataReceived -= MyPort_DataReceived;
-
-            SafeClosePort();
+            // Odpięcie handlera, zamknięcie i Dispose() portu.
+            SafeClosePort(deviceGone);
 
             // Reset stanu wizualnego przycisku połączenia do wartości domyślnych.
             btnConnect.Text = "Connect";
@@ -357,20 +385,38 @@ namespace force_measuerement_app
         }
 
         /// <summary>
-        /// Bezpiecznie zamyka port szeregowy, ignorując wyjątki które mogą wystąpić, gdy 
-        /// urządzenie zniknęło fizycznie w trakcie próby zamknięcia (Close() na martwym 
-        /// porcie potrafi rzucić wyjątek mimo że logicznie port i tak przestaje być użyteczny).
+        /// Bezpiecznie zamyka port szeregowy i ZWALNIA go (Dispose), ignorując wyjątki, które mogą
+        /// wystąpić, gdy urządzenie zniknęło fizycznie w trakcie zamykania. Brak Dispose() powoduje,
+        /// że sterownik trzyma uchwyt, a w systemie zostają martwe wpisy portu (duplikaty COM na liście).
         /// </summary>
-        private void SafeClosePort()
+        /// <param name="deviceGone">True - zamknięcie w tle (Task.Run), bo Close() na usuniętym
+        /// urządzeniu potrafi zablokować wątek UI.</param>
+        private void SafeClosePort(bool deviceGone = false)
         {
-            try
+            var port = myPort;
+
+            try { port.DataReceived -= MyPort_DataReceived; } catch { }
+
+            void CloseAndDispose()
             {
-                if (myPort.IsOpen) myPort.Close();
+                try
+                {
+                    if (port.IsOpen) port.Close();
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"Ignored error while closing port: {ex.Message}");
+                }
+                finally
+                {
+                    try { port.Dispose(); } catch { }
+                }
             }
-            catch (Exception ex)
-            {
-                LogMessage($"Ignored error while closing port: {ex.Message}");
-            }
+
+            if (deviceGone)
+                Task.Run(CloseAndDispose);
+            else
+                CloseAndDispose();
         }
 
 
@@ -420,6 +466,11 @@ namespace force_measuerement_app
                     return;
                 }
 
+                // Zwolnienie poprzedniej instancji (jeśli jeszcze żyje) przed utworzeniem nowej.
+                // Bez tego stary uchwyt wisi do finalizera i blokuje/dubluje port w systemie.
+                try { myPort.DataReceived -= MyPort_DataReceived; } catch { }
+                try { myPort.Dispose(); } catch { }
+
                 // Nowa instancja SerialPort przy każdej próbie połączenia - jeśli poprzednie
                 // połączenie zakończyło się awaryjnie (fizyczne wypięcie kabla w trakcie Close()),
                 // stary obiekt mógł zostać w niespójnym wewnętrznym stanie. Zaczynamy od zera.
@@ -464,7 +515,7 @@ namespace force_measuerement_app
                 {
                     // Urządzenie odpowiedziało, ale nie zna poprawnego hasła/identyfikatora
                     LogMessage($"Handshake failed. Unexpected response: {response}");
-                    myPort.Close();
+                    SafeClosePort();
                 }
 
             }
@@ -520,6 +571,7 @@ namespace force_measuerement_app
         /// Zdarzenie wywoływane w momencie rozwinięcia listy (ComboBox) z portami.
         /// Dynamicznie odświeża listę dostępnych portów COM w systemie Windows, 
         /// pozwalając na podpięcie kabla USB w trakcie działania programu.
+        /// Lista jest pozbawiona duplikatów i posortowana naturalnie.
         /// </summary>
         private void cmbPorts_DropDown(object sender, EventArgs e)
         {
@@ -528,8 +580,8 @@ namespace force_measuerement_app
 
             cmbPorts.Items.Clear();
 
-            // Pobranie z systemu aktualnej listy fizycznych i wirtualnych kabli COM
-            string[] availablePorts = SerialPort.GetPortNames();
+            // Pobranie z systemu aktualnej listy fizycznych i wirtualnych kabli COM (bez duplikatów)
+            string[] availablePorts = GetUniquePortNames();
             cmbPorts.Items.AddRange(availablePorts);
 
             // Próba przywrócenia wcześniej wybranego portu, jeśli nadal widnieje na liście
@@ -597,15 +649,14 @@ namespace force_measuerement_app
             }
         }
 
-        // <summary>
-        /// Zapewnia bezpieczne zamknięcie portu szeregowego i odpięcie nasłuchiwaczy 
+        /// <summary>
+        /// Zapewnia bezpieczne zamknięcie i zwolnienie portu szeregowego oraz odpięcie nasłuchiwaczy 
         /// przed zniszczeniem formularza. Zapobiega próbom dostępu do już zniszczonych 
         /// kontrolek z wątku tła SerialPort, jeśli dane przyjdą dokładnie w momencie 
         /// zamykania okna programu.
         /// </summary>
         private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
         {
-            myPort.DataReceived -= MyPort_DataReceived;
             SafeClosePort();
         }
 
