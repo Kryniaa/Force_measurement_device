@@ -1,5 +1,6 @@
+using System.Diagnostics;
 using System.IO.Ports;
-using System.Linq.Expressions;
+using System.Text;
 using System.Windows.Forms.DataVisualization.Charting;
 
 namespace force_measuerement_app
@@ -48,14 +49,54 @@ namespace force_measuerement_app
 
         /// <summary>
         /// Flaga stanu określająca, czy aplikacja aktualnie przetwarza i rysuje przychodzące dane pomiarowe.
+        /// Volatile, bo czytana z wątku tła SerialPort (MyPort_DataReceived).
         /// </summary>
-        private bool isMeasuring = false;
+        private volatile bool isMeasuring = false;
 
         /// <summary>
-        /// Ustawiana przy starcie pomiaru. Pierwsza odebrana paczka danych zostaje użyta
-        /// jako tara, po czym flaga jest kasowana.
+        /// Bufor na odebrane, jeszcze niekompletne fragmenty linii. Dane z portu są czytane
+        /// przez ReadExisting() (bez blokowania), a pełne linie wycinane po znaku '\n'.
+        /// Dostęp tylko pod lock(_rxBuffer).
         /// </summary>
-        private bool _autoTarePending = false;
+        private readonly StringBuilder _rxBuffer = new StringBuilder();
+
+        /// <summary>
+        /// Zadanie zamykające port w tle po fizycznym odłączeniu urządzenia. Przy ponownym
+        /// łączeniu czekamy na jego zakończenie, żeby nie otwierać portu, którego stary uchwyt
+        /// jeszcze nie został zwolniony ("Access to the port is denied").
+        /// </summary>
+        private Task _pendingPortClose = Task.CompletedTask;
+
+        /// <summary>
+        /// Linia średniej na wykresie - tworzona raz i tylko przesuwana (zamiast tworzyć
+        /// nowy obiekt adnotacji przy każdej paczce danych).
+        /// </summary>
+        private HorizontalLineAnnotation? _averageLine;
+
+        /// <summary>
+        /// Czy dany kanał przysłał ostatnio poprawny odczyt (służy do logowania zmian stanu
+        /// czujnika bez zalewania konsoli tym samym błędem przy każdej paczce).
+        /// </summary>
+        private readonly bool[] _channelValid = Enumerable.Repeat(true, 10).ToArray();
+
+        /// <summary>
+        /// Firmware zgłasza błąd czujnika/I2C wartością 0xFFFF. Poprawny odczyt czujnika
+        /// jest 14-bitowy (0..16383), więc wszystko powyżej traktujemy jako błąd kanału.
+        /// </summary>
+        private const int AdcMaxValid = 0x3FFF;
+
+        /// <summary>
+        /// Maksymalna liczba linii w konsoli. Logi "Received" przychodzą ~10 razy na sekundę,
+        /// więc bez limitu RichTextBox rośnie w nieskończoność i po czasie spowalnia UI.
+        /// </summary>
+        private const int MaxConsoleLines = 1000;
+
+        /// <summary>
+        /// Ustawiana przy starcie pomiaru, osobno dla każdego kanału. Pierwszy POPRAWNY odczyt
+        /// kanału zostaje użyty jako jego tara, po czym flaga kanału jest kasowana. Dzięki temu
+        /// kanał, który w pierwszej paczce zgłosił błąd (0xFFFF), nie zostaje wytarowany śmieciem.
+        /// </summary>
+        private readonly bool[] _autoTarePending = new bool[10];
 
         /// <summary>
         /// Konstruktor głównego okna aplikacji. Inicjalizuje wygenerowane komponenty WinForms.
@@ -211,6 +252,10 @@ namespace force_measuerement_app
         /// <param name="rawData">Paczka danych z mikrokontrolera (oczekiwany format: "D:val1,val2,...,val10")</param>
         private void ProcessData(string rawData)
         {
+            // Paczka mogła czekać w kolejce BeginInvoke i dotrzeć już po kliknięciu "Stop Measure".
+            if (!isMeasuring)
+                return;
+
             try
             {
                 // Weryfikacja, czy linia danych jest poprawna (zaczyna się od prefiksu "D:")
@@ -226,22 +271,46 @@ namespace force_measuerement_app
                     if (values.Length >= 10)
                     {
                         double sum = 0;
+                        int validCount = 0;
+                        bool autoTaredNow = false;
                         double loadRange = 50.0; // Maksymalny zakres czujnika w Funtach
+                        var points = chartWykres.Series["Sila"].Points;
 
                         // Iterujemy przez wszystkie 10 kanałów pomiarowych
                         for (int i = 0; i < 10; i++)
                         {
-                            // Konwersja tekstu na liczbę całkowitą (wartość z 14-bitowego przetwornika ADC)
-                            if (int.TryParse(values[i], out int adcValue))
+                            // Konwersja tekstu na liczbę (14-bitowy odczyt czujnika: 0..16383).
+                            // 0xFFFF (65535) to kod błędu czujnika/I2C wysyłany przez firmware -
+                            // bez tej kontroli dawał ~1025 N i psuł tarę oraz średnią.
+                            bool valid = int.TryParse(values[i], out int adcValue)
+                                         && adcValue >= 0 && adcValue <= AdcMaxValid;
+
+                            if (!valid)
                             {
-                                // Obliczenie siły bezwzględnej z proporcji (0-4095 dla 12-bit ADC)
+                                if (_channelValid[i])
+                                    LogMessage($"CH {i + 1}: sensor error (raw value: {values[i]}).");
+                                _channelValid[i] = false;
+
+                                points[i].YValues[0] = 0;
+                                points[i].Label = "ERR";
+                                continue;
+                            }
+
+                            if (!_channelValid[i])
+                                LogMessage($"CH {i + 1}: sensor OK again.");
+                            _channelValid[i] = true;
+
+                            {
+                                // Przeliczenie liczników na siłę: 1000 liczników = 0, span 14000 liczników = pełny zakres
                                 double absoluteForceN = ((adcValue - 1000) * loadRange / 14000) * 4.44822;
                                 _currentAbsoluteForces[i] = absoluteForceN; // Zapisanie do późniejszego tarowania
 
-                                // Automatyczne tarowanie na pierwszej paczce po starcie pomiaru
-                                if (_autoTarePending)
+                                // Automatyczne tarowanie na pierwszym poprawnym odczycie kanału po starcie pomiaru
+                                if (_autoTarePending[i])
                                 {
                                     _tareOffsets[i] = absoluteForceN;
+                                    _autoTarePending[i] = false;
+                                    autoTaredNow = true;
                                 }
 
                                 // Obliczenie siły netto (odjęcie wartości tary dla danego kanału)
@@ -254,24 +323,30 @@ namespace force_measuerement_app
                                 }
 
                                 sum += netForce; // Dodanie do sumy w celu późniejszego wyliczenia średniej
+                                validCount++;
 
                                 // Aktualizacja wykresu
-                                chartWykres.Series["Sila"].Points[i].YValues[0] = netForce; // Wysokość słupka
+                                points[i].YValues[0] = netForce; // Wysokość słupka
                                 //labele na slupkach przyklejone do slupkow
-                                chartWykres.Series["Sila"].Points[i].Label = $"{netForce:F2}"; // Napis na słupku z dokładnością do 2 miejsc
+                                points[i].Label = $"{netForce:F2}"; // Napis na słupku z dokładnością do 2 miejsc
                                 //labele nad wykresem nie przyklejone do slupkow
                                 //chartWykres.Series["WartosciSily"].Points[i].Label = $"{netForce:F2} N";
                             }
                         }
 
-                        if (_autoTarePending)
+                        if (autoTaredNow)
                         {
-                            _autoTarePending = false;
-                            LogMessage("Auto-tare done on first data packet.");
+                            LogMessage(_autoTarePending.Any(p => p)
+                                ? "Auto-tare done (some channels still waiting for a valid reading)."
+                                : "Auto-tare done on first data packet.");
                         }
-                        // Obliczenie i narysowanie średniej ze wszystkich czujników
-                        double average = sum / 10.0;
+
+                        // Średnia tylko z kanałów z poprawnym odczytem (kanał z błędem nie zaniża wyniku)
+                        double average = validCount > 0 ? sum / validCount : 0;
                         UpdateAverageLine(average);
+
+                        // Zmiana YValues[0] nie zawsze sama odświeża kontrolkę - wymuszamy przerysowanie
+                        chartWykres.Invalidate();
                     }
                 }
             }
@@ -288,29 +363,68 @@ namespace force_measuerement_app
         /// </summary>
         private void MyPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
+            var port = (SerialPort)sender;
+
+            // Zdarzenie od starej (już zamykanej) instancji portu - ignorujemy.
+            if (!ReferenceEquals(port, myPort))
+                return;
+
             try
             {
-                // Odczytanie całej linii danych (aż do znaku nowej linii)
-                string incomingData = myPort.ReadLine().Trim();
+                // ReadExisting() nie blokuje. Poprzednie ReadLine() czytało tylko JEDNĄ linię na
+                // zdarzenie - gdy w buforze były 2+ linie, reszta czekała i opóźnienie wykresu
+                // rosło z czasem. Do tego TimeoutException z ReadLine był traktowany jak wyrwany kabel.
+                string chunk = port.ReadExisting();
+                string? latestDataLine = null;
 
-                // Jeśli użytkownik nie włączył pomiaru, ignorujemy dane i uciekamy z funkcji
-                if (!isMeasuring)
+                lock (_rxBuffer)
                 {
-                    return;
+                    _rxBuffer.Append(chunk);
+                    string all = _rxBuffer.ToString();
+                    int lastNewLine = all.LastIndexOf('\n');
+
+                    if (lastNewLine < 0)
+                    {
+                        // Zabezpieczenie przed śmieciami bez końca linii
+                        if (_rxBuffer.Length > 4096)
+                            _rxBuffer.Clear();
+                    }
+                    else
+                    {
+                        _rxBuffer.Remove(0, lastNewLine + 1);
+
+                        // Rysujemy tylko najnowszą kompletną paczkę - starsze i tak zostałyby
+                        // natychmiast nadpisane, a ich przetwarzanie tylko zapycha wątek UI.
+                        string[] lines = all.Substring(0, lastNewLine).Split('\n');
+                        for (int i = lines.Length - 1; i >= 0; i--)
+                        {
+                            string line = lines[i].Trim();
+                            if (line.StartsWith("D:"))
+                            {
+                                latestDataLine = line;
+                                break;
+                            }
+                        }
+                    }
                 }
 
-                // Bezpieczne przekazanie odebranych danych z wątku w tle do głównego wątku okna (UI Thread).
-                // Jest to absolutnie konieczne, by móc modyfikować kontrolki (np. rysować wykres).
-                this.Invoke(new Action(() =>
-                {
-                    ProcessData(incomingData);
-                }));
+                // Jeśli użytkownik nie włączył pomiaru, ignorujemy dane i uciekamy z funkcji
+                if (!isMeasuring || latestDataLine == null)
+                    return;
+
+                if (this.IsDisposed || !this.IsHandleCreated)
+                    return;
+
+                // BeginInvoke (asynchronicznie), NIE Invoke. Invoke blokował wątek portu do czasu
+                // obsłużenia przez UI - a gdy UI w tym samym momencie wołał port.Close()
+                // (Disconnect / zamknięcie okna), Close() czekał na wątek portu i aplikacja się zawieszała.
+                this.BeginInvoke(new Action(() => ProcessData(latestDataLine)));
             }
             catch (Exception ex)
             {
                 // Wyjątek przy odczycie oznacza zwykle martwy port (np. wyrwany kabel),
                 // więc zamykamy go w tle, żeby Close() nie zawiesiło wątku UI.
-                HandleDisconnection(ex.Message, deviceGone: true);
+                HandleDisconnection(ex.Message, deviceGone: true, source: port);
             }
         }
 
@@ -320,21 +434,22 @@ namespace force_measuerement_app
         /// <param name="averageValue">Obliczona z 10 kanałów średnia siła w Niutonach</param>
         private void UpdateAverageLine(double averageValue)
         {
-            // Czyszczenie starych adnotacji (np. poprzedniej linii średniej)
-            chartWykres.Annotations.Clear();
+            // Linia tworzona tylko raz - potem jedynie zmieniamy jej wysokość
+            if (_averageLine == null)
+            {
+                _averageLine = new HorizontalLineAnnotation();
+                _averageLine.AxisX = chartWykres.ChartAreas[0].AxisX;
+                _averageLine.AxisY = chartWykres.ChartAreas[0].AxisY;
+                _averageLine.LineColor = Color.Red;
+                _averageLine.LineWidth = 2;
+                _averageLine.ClipToChartArea = chartWykres.ChartAreas[0].Name;
+                _averageLine.IsInfinitive = true; // Linia ma ciągnąć się przez cały wykres od lewej do prawej
+                chartWykres.Annotations.Add(_averageLine);
+            }
 
-            // Tworzenie nowej poziomej linii
-            HorizontalLineAnnotation linia = new HorizontalLineAnnotation();
-            linia.AxisX = chartWykres.ChartAreas[0].AxisX;
-            linia.AxisY = chartWykres.ChartAreas[0].AxisY;
-            linia.Y = averageValue; // Wysokość umieszczenia linii
-            linia.LineColor = Color.Red;
-            linia.LineWidth = 2;
-            linia.ClipToChartArea = chartWykres.ChartAreas[0].Name;
-            linia.IsInfinitive = true; // Linia ma ciągnąć się przez cały wykres od lewej do prawej
+            _averageLine.Y = averageValue; // Wysokość umieszczenia linii
 
-            // Dodanie linii do wykresu i aktualizacja napisu tekstowego na samej górze
-            chartWykres.Annotations.Add(linia);
+            // Aktualizacja napisu tekstowego na samej górze
             chartWykres.Titles[1].Text = $"Average: {averageValue:F2} N";
         }
 
@@ -347,16 +462,30 @@ namespace force_measuerement_app
         /// <param name="reason">Krótki opis przyczyny rozłączenia (np. treść wyjątku), trafiający do logu.</param>
         /// <param name="deviceGone">True, jeśli urządzenie zniknęło fizycznie - wtedy port jest zamykany
         /// w tle, bo Close() na usuniętym urządzeniu potrafi zawiesić wątek UI.</param>
-        private void HandleDisconnection(string reason, bool deviceGone = false)
+        private void HandleDisconnection(string reason, bool deviceGone = false, SerialPort? source = null)
         {
+            // Okno jest już zamknięte - nie ma czego sprzątać w UI, a BeginInvoke rzuciłby
+            // wyjątek na wątku tła (nieobsłużony = crash aplikacji).
+            if (this.IsDisposed || this.Disposing)
+                return;
+
             // Guard: wątek tła nie może bezpośrednio modyfikować kontrolek WinForms.
             // Jeśli jesteśmy poza wątkiem UI, przekazujemy wykonanie na właściwy wątek
             // i kończymy działanie bieżącej instancji metody.
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action(() => HandleDisconnection(reason, deviceGone)));
+                try
+                {
+                    this.BeginInvoke(new Action(() => HandleDisconnection(reason, deviceGone, source)));
+                }
+                catch (Exception) { /* uchwyt okna właśnie zniszczony */ }
                 return;
             }
+
+            // Błąd zgłoszony przez starą instancję portu (np. po szybkim Disconnect -> Connect)
+            // nie może rozłączyć nowego, poprawnie działającego połączenia.
+            if (source != null && !ReferenceEquals(source, myPort))
+                return;
 
             // Guard: unikamy powtórnego wykonania procedury sprzątającej, jeśli już wiemy,
             // że jesteśmy rozłączeni (np. przy kilku błędach/zdarzeniach z rzędu). Sprawdzamy
@@ -376,9 +505,12 @@ namespace force_measuerement_app
 
             // Jeżeli pomiar był aktywny w chwili rozłączenia, przerywamy go i synchronizujemy
             // stan wizualny przycisku pomiaru z rzeczywistym stanem logicznym aplikacji.
+            // Bezpośrednio, a nie przez btnMeasure.PerformClick() - PerformClick nic nie robi,
+            // gdy przycisk nie może przyjąć fokusu (np. okno nieaktywne/zminimalizowane albo
+            // walidacja innej kontrolki), i pomiar zostawał logicznie "włączony".
             if (isMeasuring)
             {
-                btnMeasure.PerformClick();
+                SetMeasuring(false);
             }
 
             LogMessage($"Disconnected: {reason}");
@@ -414,7 +546,7 @@ namespace force_measuerement_app
             }
 
             if (deviceGone)
-                Task.Run(CloseAndDispose);
+                _pendingPortClose = Task.Run(CloseAndDispose);
             else
                 CloseAndDispose();
         }
@@ -427,13 +559,34 @@ namespace force_measuerement_app
         /// <param name="message">Treść komunikatu</param>
         private void LogMessage(string message)
         {
-            if (this.IsDisposed || !this.IsHandleCreated)
+            if (this.IsDisposed || this.Disposing || !this.IsHandleCreated)
                 return;
 
             if (rtbConsole.InvokeRequired)
             {
-                rtbConsole.Invoke(new Action(() => LogMessage(message)));
+                // BeginInvoke - wątek tła nie czeka na UI (Invoke mógł się zakleszczyć np. gdy
+                // UI czekał na zamknięcie portu, a zamykanie w tle chciało coś zalogować).
+                try
+                {
+                    rtbConsole.BeginInvoke(new Action(() => LogMessage(message)));
+                }
+                catch (Exception) { /* okno właśnie zamykane */ }
                 return;
+            }
+
+            // Ograniczenie rozmiaru konsoli - usuwamy najstarsze linie
+            int lineCount = rtbConsole.GetLineFromCharIndex(rtbConsole.TextLength);
+            if (lineCount > MaxConsoleLines + 100)
+            {
+                int cutIndex = rtbConsole.GetFirstCharIndexFromLine(lineCount - MaxConsoleLines);
+                if (cutIndex > 0)
+                {
+                    bool wasReadOnly = rtbConsole.ReadOnly;
+                    rtbConsole.ReadOnly = false;
+                    rtbConsole.Select(0, cutIndex);
+                    rtbConsole.SelectedText = string.Empty;
+                    rtbConsole.ReadOnly = wasReadOnly;
+                }
             }
 
             rtbConsole.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\r\n");
@@ -466,6 +619,15 @@ namespace force_measuerement_app
                     return;
                 }
 
+                // Jeśli poprzedni port jest jeszcze zamykany w tle (po wypięciu kabla), czekamy chwilę,
+                // inaczej Open() tego samego COM potrafi rzucić "Access to the port is denied".
+                if (!_pendingPortClose.IsCompleted)
+                {
+                    LogMessage("Waiting for the previous port to close...");
+                    if (!_pendingPortClose.Wait(1500))
+                        LogMessage("Previous port is still closing - if connecting fails, try again in a moment.");
+                }
+
                 // Zwolnienie poprzedniej instancji (jeśli jeszcze żyje) przed utworzeniem nowej.
                 // Bez tego stary uchwyt wisi do finalizera i blokuje/dubluje port w systemie.
                 try { myPort.DataReceived -= MyPort_DataReceived; } catch { }
@@ -493,8 +655,9 @@ namespace force_measuerement_app
                 // Inicjacja Handshake'u - wysyłamy literę "I" do mikrokontrolera
                 myPort.WriteLine("I");
 
-                // Czekamy na odpowiedź z tożsamością urządzenia
-                string response = myPort.ReadLine().Trim();
+                // Czekamy na odpowiedź z tożsamością urządzenia. Pomijamy ewentualne linie z danymi
+                // ("D:...") - mogą jeszcze przyjść resztki z poprzedniej sesji.
+                string response = ReadHandshakeResponse(myPort, 2000);
 
                 // Weryfikacja tożsamości - sprawdzamy, czy po drugiej stronie na pewno jest nasz sprzęt
                 if (response == "ID:FORCE_MEASUREMENT_DEVICE_V1")
@@ -508,6 +671,9 @@ namespace force_measuerement_app
                     _isConnected = true;
                     _connectedPortName = myPort.PortName;
 
+                    lock (_rxBuffer) _rxBuffer.Clear();
+                    for (int i = 0; i < 10; i++) _channelValid[i] = true;
+
                     // Podpięcie funkcji nasłuchującej nowe dane z kabla
                     myPort.DataReceived += MyPort_DataReceived;
                 }
@@ -515,6 +681,8 @@ namespace force_measuerement_app
                 {
                     // Urządzenie odpowiedziało, ale nie zna poprawnego hasła/identyfikatora
                     LogMessage($"Handshake failed. Unexpected response: {response}");
+                    if (response.StartsWith("D:"))
+                        LogMessage("Device is already streaming data (previous session was not closed properly). Replug the USB cable and connect again.");
                     SafeClosePort();
                 }
 
@@ -550,13 +718,23 @@ namespace force_measuerement_app
                 return;
             }
 
-            // Odwrócenie flagi stanu (włącz -> wyłącz / wyłącz -> włącz)
-            isMeasuring = !isMeasuring;
+            // Odwrócenie stanu (włącz -> wyłącz / wyłącz -> włącz)
+            SetMeasuring(!isMeasuring);
+        }
+
+        /// <summary>
+        /// Jedno miejsce zmiany stanu pomiaru: flaga, auto-tara i wygląd przycisku.
+        /// Używane przez btnMeasure oraz przez HandleDisconnection.
+        /// </summary>
+        private void SetMeasuring(bool measuring)
+        {
+            isMeasuring = measuring;
 
             // Aktualizacja wyglądu przycisku
-            if (isMeasuring)
+            if (measuring)
             {
-                _autoTarePending = true;
+                for (int i = 0; i < 10; i++)
+                    _autoTarePending[i] = true;
                 btnMeasure.Text = "Stop Measure";
                 btnMeasure.BackColor = Color.LightCoral; // Czerwony ostrzega, że pomiar właśnie trwa
             }
@@ -604,11 +782,14 @@ namespace force_measuerement_app
         {
             for (int i = 0; i < 10; i++)
             {
-                // Kopiujemy bieżące surowe siły do tablicy offsetów
-                _tareOffsets[i] = _currentAbsoluteForces[i];
+                // Kopiujemy bieżące surowe siły do tablicy offsetów (pomijamy kanały z błędem)
+                if (_channelValid[i])
+                    _tareOffsets[i] = _currentAbsoluteForces[i];
             }
 
-            LogMessage("System Tared. Offsets updated.");
+            LogMessage(isMeasuring
+                ? "System Tared. Offsets updated."
+                : "System Tared using the last received values (measurement is stopped).");
 
             // Wymuszenie natychmiastowego odrysowania wykresu z uwzględnieniem nowej tary
             chartWykres.Invalidate();
@@ -657,7 +838,31 @@ namespace force_measuerement_app
         /// </summary>
         private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            isMeasuring = false;
+            _isConnected = false;
             SafeClosePort();
+        }
+
+        /// <summary>
+        /// Czyta linie z portu aż do odpowiedzi "ID:..." albo upływu czasu. Linie z danymi
+        /// pomiarowymi są pomijane. Gdy port milczy, ReadLine() rzuca TimeoutException
+        /// (obsługiwany w btnConnect_Click).
+        /// </summary>
+        private static string ReadHandshakeResponse(SerialPort port, int timeoutMs)
+        {
+            var sw = Stopwatch.StartNew();
+            string lastLine = "";
+
+            while (sw.ElapsedMilliseconds < timeoutMs)
+            {
+                string line = port.ReadLine().Trim();
+                if (line.StartsWith("ID:"))
+                    return line;
+                if (line.Length > 0)
+                    lastLine = line;
+            }
+
+            return lastLine;
         }
 
         // =====================================================================
